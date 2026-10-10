@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Rust Build
+target/
+
+# Frontend Build
+dist/
+build/
+.vite/
+
+# Logs and Scratch
+*.log
+scratch/
+chaos-results/
+benchmark.ps1
+chaos.ps1
+cargo_msvc.bat
+storage-report.sql
+packages/dashboard/scripts/
+
+# Editor / OS / AI Tools
+.DS_Store
+.vscode/
+.idea/
+.gemini/
+.agents/
+AGENTS.md
+
+# Docs and Plans (per user setup)
+docs/
+plans/
+axiom-storage/migrations/
+
+# Downloaded tools and installers
+nats-0.1.1-linux-amd64/
+nats.zip
+rustup-init.exe
+vs_buildtools.exe
+
+# Environment
+.env
+.env.*

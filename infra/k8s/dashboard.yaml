@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: axiom-dashboard
+  labels:
+    app: axiom-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: axiom-dashboard
+  template:
+    metadata:
+      labels:
+        app: axiom-dashboard
+    spec:
+      containers:
+      - name: axiom-dashboard
+        image: axiom-engine-dashboard:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "64Mi"
+          limits:
+            cpu: "100m"
+            memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: axiom-dashboard
+spec:
+  type: LoadBalancer
+  selector:
+    app: axiom-dashboard
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80

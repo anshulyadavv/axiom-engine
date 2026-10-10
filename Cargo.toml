@@ -1,0 +1,21 @@
+[workspace]
+members = [
+    "crates/axiom-core",
+    "crates/axiom-storage",
+    "crates/axiom-api",
+    "crates/axiom-runtime",
+    "crates/axiom-worker",
+    "crates/axiom-cli", "scratch/rand_test",
+]
+resolver = "2"
+
+[workspace.dependencies]
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4", "v5", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+thiserror = "1"
+anyhow = "1"
+tracing = "0.1"
+sqlx = { version = "0.7", features = ["postgres", "runtime-tokio", "uuid", "chrono", "json"] }

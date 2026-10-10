@@ -1,0 +1,19 @@
+[package]
+name = "axiom-runtime"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axiom-core = { path = "../axiom-core" }
+axiom-storage = { path = "../axiom-storage" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+async-trait = "0.1"
+tokio = { workspace = true }
+
+[dev-dependencies]
+sqlx = { workspace = true }

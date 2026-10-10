@@ -1,0 +1,23 @@
+{
+  "name": "@axiom/sdk",
+  "version": "0.1.0",
+  "description": "Axiom Engine TypeScript SDK",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "dev": "tsc -w"
+  },
+  "dependencies": {
+    "axios": "^1.6.8",
+    "events": "^3.3.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.12.7",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
+    "typescript": "^5.4.5"
+  }
+}

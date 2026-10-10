@@ -1,0 +1,26 @@
+[package]
+name = "axiom-api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axiom-core = { path = "../axiom-core" }
+axiom-storage = { path = "../axiom-storage" }
+tokio = { version = "1", features = ["full"] }
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["trace", "cors"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+tracing = "0.1"
+uuid = { workspace = true }
+chrono = { workspace = true }
+anyhow = { workspace = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+sha2 = "0.10"
+hex = "0.4"
+metrics = "0.22"
+metrics-exporter-prometheus = "0.13"
+rand = "0.8"
+sqlx = { workspace = true }
