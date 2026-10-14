@@ -33,7 +33,14 @@ impl WorkerConsumer {
         while let Some(msg_result) = messages.next().await {
             match msg_result {
                 Ok(msg) => {
-                    let work_msg: WorkMessage = serde_json::from_slice(&msg.payload)?;
+                    let work_msg: WorkMessage = match serde_json::from_slice(&msg.payload) {
+                        Ok(w) => w,
+                        Err(e) => {
+                            error!("Malformed NATS work message on {}: {}. Dropping poison message.", msg.subject, e);
+                            let _ = msg.ack().await;
+                            continue;
+                        }
+                    };
                     info!(run_id = %work_msg.run_id.0, step_id = %work_msg.step_id, attempt = %work_msg.attempt, "Received work for step");
 
                     // --- CHAOS FAULT INJECTION (Developer Only) ---

@@ -95,6 +95,7 @@ pub struct StepResultPayload {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct IpcError {
+    #[serde(default)]
     pub message: String,
     #[serde(rename = "type")]
     #[serde(default)]

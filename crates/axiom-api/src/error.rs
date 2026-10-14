@@ -34,8 +34,8 @@ pub enum ApiError {
     #[error("Unauthorized")]
     Unauthorized,
     
-    #[error("Forbidden")]
-    Forbidden,
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
     
     #[error("Not Found")]
     NotFound(String),
@@ -60,8 +60,8 @@ impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status, code, message, details) = match self {
             ApiError::Validation(msg, dets) => (StatusCode::BAD_REQUEST, "VALIDATION_ERROR", msg, dets),
-            ApiError::Unauthorized => (StatusCode::UNAUTHORIZED, "UNAUTHORIZED", "Missing or invalid API key".to_string(), vec![]),
-            ApiError::Forbidden => (StatusCode::FORBIDDEN, "FORBIDDEN", "Insufficient permissions".to_string(), vec![]),
+            ApiError::Unauthorized => (StatusCode::UNAUTHORIZED, "UNAUTHORIZED", "Missing or invalid authentication".to_string(), vec![]),
+            ApiError::Forbidden(msg) => (StatusCode::FORBIDDEN, "FORBIDDEN", msg, vec![]),
             ApiError::NotFound(msg) => (StatusCode::NOT_FOUND, "NOT_FOUND", msg, vec![]),
             ApiError::Conflict(msg) => (StatusCode::CONFLICT, "CONFLICT", msg, vec![]),
             ApiError::Unprocessable(msg) => (StatusCode::UNPROCESSABLE_ENTITY, "UNPROCESSABLE", msg, vec![]),

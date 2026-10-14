@@ -1,122 +1,177 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { formatDistanceToNow } from 'date-fns';
-import { motion } from 'framer-motion';
-import { MagnifyingGlassIcon, ClockIcon } from '@radix-ui/react-icons';
+import { Clock, ArrowUpRight, Play } from 'lucide-react';
+import { PageHeader, Button, SearchInput, EmptyState, Badge } from '../components/ui';
 
 export const RunsList = () => {
-  const { data: runsResponse, isLoading } = useQuery({ queryKey: ['runs'], queryFn: api.getRuns });
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeStatus = searchParams.get('status') || 'all';
   const [search, setSearch] = useState('');
+
+  const { data: runsResponse, isLoading } = useQuery({ 
+    queryKey: ['runs', activeStatus], 
+    queryFn: () => api.getRuns(activeStatus === 'all' ? undefined : activeStatus),
+    refetchInterval: 5000,
+  });
 
   const runs = runsResponse?.data || [];
   
-  const filteredRuns = runs.filter((run: any) => 
-    run.id.toLowerCase().includes(search.toLowerCase()) || 
-    (run.workflow_id && run.workflow_id.toLowerCase().includes(search.toLowerCase())) ||
-    run.status.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredRuns = runs.filter((run: any) => {
+    const term = search.toLowerCase();
+    const idMatches = run.id?.toLowerCase().includes(term);
+    const wfMatches = run.workflow_id?.toLowerCase().includes(term) || run.workflow_name?.toLowerCase().includes(term);
+    return idMatches || wfMatches;
+  });
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: { opacity: 1, transition: { staggerChildren: 0.05 } }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 10 },
-    show: { opacity: 1, y: 0 }
+  const handleStatusChange = (status: string) => {
+    if (status === 'all') {
+      searchParams.delete('status');
+    } else {
+      searchParams.set('status', status);
+    }
+    setSearchParams(searchParams);
   };
 
   return (
-    <motion.div initial="hidden" animate="show" variants={containerVariants} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div className="page-content" style={{ flex: 1 }}>
-        
-        <div style={{ marginBottom: '1.5rem', maxWidth: '300px', position: 'relative' }}>
-          <MagnifyingGlassIcon width={16} height={16} color="var(--text-tertiary)" style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)' }} />
-          <input 
-            type="text" 
-            placeholder="Filter runs..." 
+    <div className="page-container">
+      {/* Header */}
+      <PageHeader
+        title="Executions"
+        description="Searchable execution log, active runs, and durable checkpoint records."
+        actions={
+          <Link to="/workflows">
+            <Button variant="primary" size="sm" icon={<Play size={14} />}>
+              Submit Workflow
+            </Button>
+          </Link>
+        }
+      />
+
+      {/* Controls: Search & Status Filter Tabs */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
+        <div style={{ flex: 1, minWidth: '240px', maxWidth: '420px' }}>
+          <SearchInput
+            placeholder="Filter by Run ID or Workflow..."
             value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ paddingLeft: '2.25rem' }}
+            onChange={(e) => setSearch(e.target.value)}
+            onClear={() => setSearch('')}
           />
         </div>
 
-        {isLoading ? (
-          <div className="card" style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)' }}>
-            Loading runs...
+        <div className="filter-tab-bar">
+          {['all', 'running', 'completed', 'failed', 'cancelled'].map((tab) => (
+            <button
+              key={tab}
+              className={`filter-tab ${activeStatus === tab ? 'active' : ''}`}
+              onClick={() => handleStatusChange(tab)}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Runs Table */}
+      <div className="table-wrapper">
+        <div className="table-header-bar">
+          <div className="table-header-title">
+            <Clock size={16} style={{ color: 'var(--accent)' }} />
+            <span>Workflow Executions</span>
+            <Badge variant="neutral">{filteredRuns.length} total</Badge>
           </div>
-        ) : !runs || runs.length === 0 ? (
-          <motion.div variants={itemVariants} className="card" style={{ textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-            <ClockIcon width={48} height={48} color="var(--border-highlight)" />
-            <div>
-              <div style={{ fontSize: 'var(--text-lg)', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '0.25rem' }}>No runs found</div>
-              <div>Trigger a run from a workflow to see it here.</div>
+        </div>
+
+        <div className="table-container">
+          {isLoading ? (
+            <div style={{ padding: '3.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+              Loading executions...
             </div>
-            <Link to="/workflows" className="btn btn-primary" style={{ marginTop: '1rem' }}>View Workflows</Link>
-          </motion.div>
-        ) : (
-          <motion.div variants={itemVariants} className="card" style={{ padding: 0 }}>
-            <div className="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Run ID</th>
-                    <th>Workflow ID</th>
-                    <th>Status</th>
-                    <th>Started</th>
-                    <th>Duration</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRuns.map((run: any, idx: number) => {
-                    let badgeClass = 'badge-info';
-                    if (run.status === 'completed') badgeClass = 'badge-success';
-                    if (run.status === 'failed') badgeClass = 'badge-error';
-                    if (run.status === 'cancelled') badgeClass = 'badge-warning';
-                    
-                    return (
-                      <motion.tr 
-                        key={run.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.03 }}
-                      >
-                        <td style={{ fontFamily: 'var(--font-mono)' }}>
-                          <Link to={`/runs/${run.id}`}>{run.id.slice(0, 12)}...</Link>
-                        </td>
-                        <td>
-                          <Link to={`/workflows/${run.workflow_id}`} style={{ fontWeight: 500 }}>
-                            {run.workflow_id.slice(0, 12)}...
-                          </Link>
-                        </td>
-                        <td>
-                          <span className={`badge ${badgeClass}`}>{run.status}</span>
-                        </td>
-                        <td className="text-secondary">
-                          {run.started_at ? formatDistanceToNow(new Date(run.started_at), { addSuffix: true }) : '—'}
-                        </td>
-                        <td>
-                          {run.completed_at && run.started_at ? 
-                            `${new Date(run.completed_at).getTime() - new Date(run.started_at).getTime()}ms` : '—'}
-                        </td>
-                      </motion.tr>
-                    );
-                  })}
-                  {filteredRuns.length === 0 && (
-                    <tr>
-                      <td colSpan={5} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-tertiary)' }}>
-                        No runs match your search.
+          ) : filteredRuns.length === 0 ? (
+            <EmptyState
+              title={search ? 'No matching executions' : 'No executions found'}
+              description={search ? `No runs matched "${search}".` : `No workflow executions currently match status "${activeStatus}".`}
+              action={
+                search ? (
+                  <Button variant="secondary" size="sm" onClick={() => setSearch('')}>Clear Filter</Button>
+                ) : activeStatus !== 'all' ? (
+                  <Button variant="secondary" size="sm" onClick={() => handleStatusChange('all')}>Show All Runs</Button>
+                ) : (
+                  <Link to="/workflows">
+                    <Button variant="primary" size="sm" icon={<Play size={14} />}>Start an Execution</Button>
+                  </Link>
+                )
+              }
+            />
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Workflow</th>
+                  <th>Run ID</th>
+                  <th>Status</th>
+                  <th>Duration</th>
+                  <th>Attempts</th>
+                  <th>Started</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRuns.map((run: any) => {
+                  let badgeVariant: 'success' | 'error' | 'warning' | 'info' = 'info';
+                  if (run.status === 'completed') badgeVariant = 'success';
+                  if (run.status === 'failed') badgeVariant = 'error';
+                  if (run.status === 'cancelled') badgeVariant = 'warning';
+
+                  const duration = run.completed_at && (run.started_at || run.created_at)
+                    ? new Date(run.completed_at).getTime() - new Date(run.started_at || run.created_at).getTime()
+                    : null;
+
+                  return (
+                    <tr key={run.id}>
+                      <td style={{ fontWeight: 500 }}>
+                        <Link to={`/workflows/${run.workflow_id}`}>
+                          {run.workflow_name || run.workflow_id?.slice(0, 16) || 'Workflow'}
+                        </Link>
+                      </td>
+                      <td className="font-mono">
+                        <Link to={`/runs/${run.id}`} style={{ color: 'var(--accent)' }}>
+                          {run.id}
+                        </Link>
+                      </td>
+                      <td>
+                        <Badge variant={badgeVariant} dot>
+                          {run.status}
+                        </Badge>
+                      </td>
+                      <td className="tabular-nums" style={{ color: 'var(--text-secondary)' }}>
+                        {duration != null ? `${duration}ms` : '—'}
+                      </td>
+                      <td className="tabular-nums" style={{ color: 'var(--text-secondary)' }}>
+                        {run.attempts ?? 1}
+                      </td>
+                      <td className="tabular-nums" style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
+                        {run.started_at || run.created_at 
+                          ? formatDistanceToNow(new Date(run.started_at || run.created_at), { addSuffix: true }) 
+                          : '—'}
+                      </td>
+                      <td>
+                        <Link to={`/runs/${run.id}`}>
+                          <Button variant="ghost" size="sm" icon={<ArrowUpRight size={12} />}>
+                            Inspect
+                          </Button>
+                        </Link>
                       </td>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </motion.div>
-        )}
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
-    </motion.div>
+    </div>
   );
 };

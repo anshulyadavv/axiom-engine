@@ -2,16 +2,16 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
 import { format } from 'date-fns';
-import { LockClosedIcon, PlusIcon, TrashIcon, CopyIcon, LightningBoltIcon } from '@radix-ui/react-icons';
-import { motion, AnimatePresence } from 'framer-motion';
-import clsx from 'clsx';
+import { Key, Plus, Trash2, Copy, Check, ShieldCheck, AlertTriangle, X } from 'lucide-react';
+import { PageHeader, Button, Badge, EmptyState } from '../components/ui';
 
 export const ApiKeys = () => {
   const queryClient = useQueryClient();
   const [newKeyName, setNewKeyName] = useState('');
   const [createdKey, setCreatedKey] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  const { data: keys, isLoading } = useQuery({ 
+  const { data: keys = [], isLoading } = useQuery({ 
     queryKey: ['apiKeys'], 
     queryFn: api.getApiKeys 
   });
@@ -34,142 +34,163 @@ export const ApiKeys = () => {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-  };
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: { opacity: 1, transition: { staggerChildren: 0.05 } }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 10 },
-    show: { opacity: 1, y: 0 }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
   };
 
   return (
-    <motion.div initial="hidden" animate="show" variants={containerVariants} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div className="page-content" style={{ display: 'flex', flexDirection: 'column', gap: '2rem', flex: 1 }}>
-        
-        <motion.div variants={itemVariants} className="card">
-          <div className="card-header" style={{ marginBottom: '1rem', fontSize: 'var(--text-lg)', color: 'var(--text-primary)' }}>
-            Create New API Key
-          </div>
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: '300px', maxWidth: '400px' }}>
-              <input 
-                type="text" 
-                placeholder="Key Name (e.g. Production Service)"
-                value={newKeyName} 
-                onChange={e => setNewKeyName(e.target.value)}
-                onKeyDown={e => { if(e.key === 'Enter' && newKeyName.trim()) createMutation.mutate(newKeyName); }}
-              />
-            </div>
-            <button 
-              className="btn btn-primary"
-              onClick={() => { if (newKeyName.trim()) createMutation.mutate(newKeyName); }}
-              disabled={createMutation.isPending || !newKeyName.trim()}
-            >
-              <PlusIcon width={16} height={16} /> {createMutation.isPending ? 'Creating...' : 'Create Key'}
-            </button>
-          </div>
+    <div className="page-container">
+      {/* Header */}
+      <PageHeader
+        title="API Keys"
+        description="Authenticate programmatic workflow triggers and worker clients via scoped Bearer API tokens."
+      />
 
-          <AnimatePresence>
-            {createdKey && (
-              <motion.div 
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                style={{ overflow: 'hidden' }}
-              >
-                <div style={{ marginTop: '1.5rem', padding: '1.5rem', background: 'var(--warning-bg)', border: '1px solid var(--warning-border)', borderRadius: '8px', color: 'var(--warning)' }}>
-                  <div style={{ fontWeight: 600, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <LightningBoltIcon width={18} height={18} /> Important: Copy your new API Key now.
-                  </div>
-                  <div style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>It will never be shown again for security reasons.</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div style={{ flex: 1, fontFamily: 'var(--font-mono)', padding: '0.75rem 1rem', background: 'var(--bg-secondary)', borderRadius: '4px', border: '1px solid var(--warning-border)', userSelect: 'all', color: 'var(--text-primary)', wordBreak: 'break-all' }}>
-                      {createdKey}
-                    </div>
-                    <button className="btn btn-secondary" onClick={() => copyToClipboard(createdKey)} title="Copy to clipboard">
-                      <CopyIcon width={16} height={16} />
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
+      {/* Creation Card */}
+      <div className="card" style={{ marginBottom: '1.25rem' }}>
+        <div className="card-header">
+          <span className="card-title">
+            <Plus size={16} style={{ color: 'var(--accent)' }} />
+            Generate New API Key
+          </span>
+        </div>
 
-        <motion.div variants={itemVariants} className="card" style={{ padding: 0 }}>
-          <div className="table-container">
-            {isLoading ? (
-               <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-tertiary)' }}>Loading keys...</div>
-            ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Status</th>
-                    <th>Created</th>
-                    <th>Revoked</th>
-                    <th style={{ textAlign: 'right' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {keys?.map((k: any, idx: number) => (
-                    <motion.tr 
-                      key={k.key_id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.03 }}
-                    >
-                      <td style={{ fontWeight: 500 }}>
-                        <div className="flex items-center gap-2">
-                          <LockClosedIcon width={16} height={16} color="var(--text-tertiary)" />
-                          {k.description || k.key_id}
-                        </div>
-                      </td>
-                      <td>
-                        {k.is_active ? (
-                          <span className="badge badge-success">Active</span>
-                        ) : (
-                          <span className="badge badge-error">Revoked</span>
-                        )}
-                      </td>
-                      <td className="text-secondary">
-                        {format(new Date(k.created_at), 'MMM d, yyyy HH:mm')}
-                      </td>
-                      <td className="text-secondary">
-                        {k.revoked_at ? format(new Date(k.revoked_at), 'MMM d, yyyy HH:mm') : '—'}
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        {k.is_active && (
-                          <button 
-                            className="btn btn-ghost"
-                            onClick={() => { if(confirm('Are you sure you want to revoke this key?')) revokeMutation.mutate(k.key_id); }}
-                            style={{ color: 'var(--error)', padding: '0.25rem 0.5rem' }}
-                            title="Revoke Key"
-                          >
-                            <TrashIcon width={16} height={16} /> <span style={{ fontSize: 'var(--text-xs)' }}>Revoke</span>
-                          </button>
-                        )}
-                      </td>
-                    </motion.tr>
-                  ))}
-                  {(!keys || keys.length === 0) && (
-                    <tr>
-                      <td colSpan={5} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-tertiary)' }}>
-                        No API keys found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            )}
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: '240px', maxWidth: '400px' }}>
+            <input 
+              type="text" 
+              placeholder="Key label (e.g. CI/CD Dispatcher, Production Worker)" 
+              value={newKeyName}
+              onChange={e => setNewKeyName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && newKeyName.trim()) {
+                  createMutation.mutate(newKeyName.trim());
+                }
+              }}
+            />
           </div>
-        </motion.div>
-
+          <Button 
+            variant="primary" 
+            disabled={!newKeyName.trim()}
+            isLoading={createMutation.isPending}
+            onClick={() => createMutation.mutate(newKeyName.trim())}
+            icon={<Key size={14} />}
+          >
+            Generate API Key
+          </Button>
+        </div>
       </div>
-    </motion.div>
+
+      {/* One-time Secret Disclosure Modal */}
+      {createdKey && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ borderColor: 'var(--accent-border)' }}>
+            <div className="modal-header">
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent)' }}>
+                <ShieldCheck size={18} /> API Key Generated Successfully
+              </span>
+              <button className="btn btn-sm btn-ghost" onClick={() => setCreatedKey(null)}>
+                <X size={16} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <div style={{ padding: '0.75rem', backgroundColor: 'var(--status-warning-bg)', border: '1px solid var(--status-warning-border)', borderRadius: 'var(--radius-md)', color: 'var(--status-warning)', fontSize: 'var(--font-size-xs)', marginBottom: '1rem', display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+                <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+                <span>
+                  <strong>Copy this key now.</strong> For your security, the secret key cannot be displayed again after closing this window.
+                </span>
+              </div>
+
+              <label>Secret API Key Token</label>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <input 
+                  type="text" 
+                  readOnly 
+                  value={createdKey} 
+                  className="font-mono" 
+                  style={{ fontSize: '12px', backgroundColor: 'var(--bg-surface-elevated)' }}
+                />
+                <button 
+                  className="btn btn-primary" 
+                  onClick={() => copyToClipboard(createdKey)}
+                  style={{ gap: '0.375rem' }}
+                >
+                  {copied ? <Check size={14} /> : <Copy size={14} />}
+                  {copied ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setCreatedKey(null)}>
+                I Have Saved My Secret Key
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Existing Keys Table */}
+      <div className="table-wrapper">
+        <div className="table-header-bar">
+          <div className="table-header-title">
+            <Key size={16} style={{ color: 'var(--accent)' }} />
+            <span>Active API Keys</span>
+            <span className="badge badge-neutral tabular-nums">{keys.length} keys</span>
+          </div>
+        </div>
+
+        <div className="table-container">
+          {isLoading ? (
+            <div style={{ padding: '3.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+              Loading active credentials...
+            </div>
+          ) : keys.length === 0 ? (
+            <EmptyState
+              title="No API keys configured"
+              description="Generate a scoped API key to authenticate workflow submissions and worker clients."
+            />
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Key Name</th>
+                  <th>Key Prefix</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {keys.map((k: any) => (
+                  <tr key={k.id}>
+                    <td style={{ fontWeight: 600 }}>{k.name}</td>
+                    <td className="font-mono text-muted" style={{ fontSize: '12px' }}>
+                      {k.prefix || 'axm_live_••••'}
+                    </td>
+                    <td>
+                      <Badge variant="success" dot>ACTIVE</Badge>
+                    </td>
+                    <td className="tabular-nums" style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
+                      {k.created_at ? format(new Date(k.created_at), 'yyyy-MM-dd HH:mm') : '—'}
+                    </td>
+                    <td>
+                      <Button 
+                        variant="danger"
+                        size="sm"
+                        onClick={() => revokeMutation.mutate(k.id)}
+                        isLoading={revokeMutation.isPending}
+                        icon={<Trash2 size={12} />}
+                      >
+                        Revoke
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };

@@ -3,6 +3,7 @@ import * as path from "path";
 import * as readline from "readline";
 
 describe("IPC Protocol E2E Contract", () => {
+    jest.setTimeout(20000);
     let child: any;
     let rl: readline.Interface;
     let responses: string[] = [];

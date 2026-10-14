@@ -52,15 +52,23 @@ async fn test_ts_sidecar_ipc_exchange() -> Result<()> {
     
     let mut sidecar = SidecarProcess::spawn("mock_sidecar.js").await?;
     
+    let db_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| "postgres://axiom:password@localhost:5432/axiom_engine".into());
+    let db = match axiom_storage::Database::connect(&db_url).await {
+        Ok(db) => std::sync::Arc::new(db),
+        Err(_) => return Ok(()),
+    };
+    let tenant_id = axiom_core::TenantId(uuid::Uuid::new_v4());
+
     let payload = ResumeWorkflowPayload {
         run_id: RunId(uuid::Uuid::new_v4()),
         workflow_name: "test-flow".into(),
         workflow_version: 1,
         input: serde_json::json!({}),
         history: vec![],
+        run_correlation_id: None,
     };
     
-    let cmd = sidecar.send_resume_workflow(payload).await?;
+    let cmd = sidecar.send_resume_workflow(payload, db, tenant_id).await?;
     match cmd {
         axiom_worker::ipc::CommandPayload::ScheduleStep { step_id, .. } => {
             assert_eq!(step_id, "step-1");

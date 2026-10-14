@@ -52,6 +52,7 @@ async fn test_lease_acquisition_increments_token() {
         idempotency_key: None,
         correlation_id: None,
         parent_run_id: None,
+        parent_operation_id: None,
         worker_id: None,
         fence_token: FenceToken(0),
         lease_expires_at: None,

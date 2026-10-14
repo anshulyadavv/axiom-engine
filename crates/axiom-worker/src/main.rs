@@ -19,7 +19,7 @@ async fn main() -> anyhow::Result<()> {
            .expect("failed to install Prometheus recorder");
 
     let db_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/axiom".to_string());
+        .unwrap_or_else(|_| "postgres://axiom:password@localhost:5432/axiom_engine".to_string());
     let db = Arc::new(Database::connect(&db_url).await?);
     
     let nats_url = std::env::var("NATS_URL").unwrap_or_else(|_| "nats://localhost:4222".to_string());
@@ -35,7 +35,13 @@ async fn main() -> anyhow::Result<()> {
     let worker_id = uuid::Uuid::new_v4().to_string();
     
     // Path to the MVP TS sidecar entrypoint
-    let script_path = std::env::var("SIDECAR_PATH").unwrap_or_else(|_| "../../packages/sdk/dist/app.js".to_string());
+    let script_path = std::env::var("SIDECAR_PATH").unwrap_or_else(|_| {
+        if std::path::Path::new("packages/sdk/dist/app.js").exists() {
+            "packages/sdk/dist/app.js".to_string()
+        } else {
+            "../../packages/sdk/dist/app.js".to_string()
+        }
+    });
 
     let scheduler = Scheduler {
         db: db.clone(),
@@ -55,6 +61,36 @@ async fn main() -> anyhow::Result<()> {
         js: js.clone(),
     };
 
+    use axiom_storage::traits::WorkerRepository;
+
+    let hostname = std::env::var("COMPUTERNAME")
+        .or_else(|_| std::env::var("HOSTNAME"))
+        .unwrap_or_else(|_| "localhost".to_string());
+
+    let worker_meta = serde_json::json!({
+        "hostname": hostname,
+        "pid": std::process::id(),
+        "sidecar_path": script_path.clone(),
+        "runtime": "axiom-worker-rs",
+        "version": env!("CARGO_PKG_VERSION"),
+    });
+
+    if let Err(e) = db.register_worker(&worker_id, None, worker_meta).await {
+        tracing::warn!("Failed to register worker in DB: {}", e);
+    }
+
+    let heartbeat_db = db.clone();
+    let heartbeat_id = worker_id.clone();
+    let heartbeat_handle = tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(15));
+        loop {
+            interval.tick().await;
+            if let Err(e) = heartbeat_db.heartbeat_worker(&heartbeat_id).await {
+                tracing::warn!("Failed to send worker heartbeat: {}", e);
+            }
+        }
+    });
+
     tracing::info!("Axiom Worker {} running with sidecar {}", worker_id, script_path);
 
     tokio::select! {
@@ -70,10 +106,8 @@ async fn main() -> anyhow::Result<()> {
             }
         },
         _ = shutdown_signal() => {
+            heartbeat_handle.abort();
             tracing::info!("Graceful shutdown initiated. Worker stopping...");
-            // Existing in-flight tasks inside the spawned consumer/scheduler will continue up to their await points.
-            // Note: A true production worker would implement a CancellationToken to drain existing work 
-            // before exiting. Here, we rely on lease expiry and fencing for durability.
         }
     }
 

@@ -137,7 +137,8 @@ export class ContextImpl implements WorkflowContext {
                 if (event.type === "StepCompleted") {
                     return event.data.output as T;
                 } else {
-                    throw event.data.error;
+                    const stepErr = event.data.error;
+                    throw typeof stepErr === "string" ? new Error(stepErr) : (stepErr || new Error("Step execution failed"));
                 }
             } else {
                 // LIVE mode. 
@@ -264,11 +265,12 @@ export class WorkflowEngine {
                     }
                 };
             }
+            const errorMsg = typeof e === "string" ? e : (e?.message || String(e) || "Workflow execution failed");
             return { 
                 command_type: "FailWorkflow", 
                 error: { 
                     type: "EXECUTION_ERROR",
-                    message: e.message,
+                    message: errorMsg,
                     details: []
                 } 
             };

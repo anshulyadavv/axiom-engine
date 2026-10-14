@@ -26,6 +26,7 @@ packages/dashboard/scripts/
 .idea/
 .gemini/
 .agents/
+skills-lock.json
 AGENTS.md
 
 # Docs and Plans (per user setup)
@@ -38,6 +39,7 @@ nats-0.1.1-linux-amd64/
 nats.zip
 rustup-init.exe
 vs_buildtools.exe
+
 
 # Environment
 .env

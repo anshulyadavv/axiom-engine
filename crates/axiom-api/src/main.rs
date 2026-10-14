@@ -2,7 +2,10 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use axiom_storage::Database;
-use axiom_api::server::{create_router, AppState};
+use axiom_api::server::{create_router, AppState, RateLimiter};
+use axiom_api::cache::RedisCache;
+use axiom_api::telemetry::TelemetryHub;
+use axiom_api::handlers::workload::WorkloadGeneratorState;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -14,9 +17,8 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer().json())
         .init();
 
-    // In a real environment, read from env var
     let db_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/axiom".to_string());
+        .unwrap_or_else(|_| "postgres://axiom:password@localhost:5432/axiom_engine".to_string());
         
     let db = Database::connect(&db_url).await?;
     db.run_migrations().await?;
@@ -24,14 +26,26 @@ async fn main() -> anyhow::Result<()> {
     let builder = metrics_exporter_prometheus::PrometheusBuilder::new();
     let metrics_handle = builder.install_recorder().expect("failed to install Prometheus recorder");
 
-    let rate_limiter = Arc::new(axiom_api::server::RateLimiter::new());
+    let rate_limiter = Arc::new(RateLimiter::new());
+    let cache = Arc::new(RedisCache::new(None).await);
+    let telemetry = Arc::new(TelemetryHub::new(2048, 200));
+    let workload_generator = Arc::new(WorkloadGeneratorState::new());
 
-    let state = AppState { db: Arc::new(db), metrics_handle, rate_limiter };
+    let state = AppState {
+        db: Arc::new(db),
+        metrics_handle,
+        rate_limiter,
+        cache,
+        telemetry,
+        workload_generator,
+    };
     
     let app = create_router(state);
 
-    let listener = TcpListener::bind("0.0.0.0:3000").await?;
-    tracing::info!("listening on {}", listener.local_addr()?);
+    let port = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string());
+    let bind_addr = format!("0.0.0.0:{}", port);
+    let listener = TcpListener::bind(&bind_addr).await?;
+    tracing::info!("Axiom API Gateway listening on {}", listener.local_addr()?);
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;

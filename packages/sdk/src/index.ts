@@ -15,3 +15,6 @@ export { engine, startWorker };
 export * from "./types";
 export * from "./engine";
 export * from "./client";
+export * from "./ai/types";
+export * from "./ai/agent";
+

@@ -115,4 +115,6 @@ pub trait StateRepository: Send + Sync {
 #[async_trait]
 pub trait WorkerRepository: Send + Sync {
     async fn list_workers(&self, tenant_id: TenantId) -> Result<Vec<crate::models::WorkerRow>>;
+    async fn register_worker(&self, id: &str, tenant_id: Option<TenantId>, metadata: serde_json::Value) -> Result<()>;
+    async fn heartbeat_worker(&self, id: &str) -> Result<()>;
 }

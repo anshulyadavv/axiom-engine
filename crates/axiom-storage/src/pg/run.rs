@@ -327,7 +327,15 @@ impl RunRepository for Database {
         let result = sqlx::query(
             r#"
             UPDATE workflow_runs
-            SET status = $1, output = $2, error = $3, updated_at = now()
+            SET status = $1, output = $2, error = $3, updated_at = now(),
+                completed_at = CASE 
+                    WHEN $1 IN ('completed', 'failed', 'cancelled', 'version_mismatch') THEN COALESCE(completed_at, now()) 
+                    ELSE completed_at 
+                END,
+                started_at = CASE 
+                    WHEN $1 IN ('running', 'completed', 'failed') THEN COALESCE(started_at, now()) 
+                    ELSE started_at 
+                END
             WHERE id = $4 AND fence_token = $5
             "#
         )
@@ -377,7 +385,15 @@ impl RunRepository for Database {
         let result = sqlx::query(
             r#"
             UPDATE workflow_runs
-            SET status = $1, output = $2, error = $3, updated_at = now()
+            SET status = $1, output = $2, error = $3, updated_at = now(),
+                completed_at = CASE 
+                    WHEN $1 IN ('completed', 'failed', 'cancelled', 'version_mismatch') THEN COALESCE(completed_at, now()) 
+                    ELSE completed_at 
+                END,
+                started_at = CASE 
+                    WHEN $1 IN ('running', 'completed', 'failed') THEN COALESCE(started_at, now()) 
+                    ELSE started_at 
+                END
             WHERE id = $4 AND fence_token = $5
             "#
         )
@@ -499,7 +515,7 @@ impl RunRepository for Database {
                 SELECT w.id FROM workflow_runs w INNER JOIN descendants d ON w.parent_run_id = d.id
             )
             UPDATE workflow_runs
-            SET status = 'cancelled', updated_at = now()
+            SET status = 'cancelled', updated_at = now(), completed_at = now()
             WHERE id IN (SELECT id FROM descendants) AND status NOT IN ('completed', 'failed', 'cancelled')
             "#
         )

@@ -3,189 +3,231 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../api';
 import { formatDistanceToNow } from 'date-fns';
-import { motion, AnimatePresence, useSpring, useTransform } from 'framer-motion';
-import { Box, Play, CheckCircle2, Clock, XCircle, Zap } from 'lucide-react';
-
-const AnimatedNumber = ({ value }: { value: number }) => {
-  const spring = useSpring(0, { bounce: 0, duration: 1000 });
-  const display = useTransform(spring, (current) => Math.round(current));
-  
-  useEffect(() => {
-    spring.set(value);
-  }, [spring, value]);
-  
-  return <motion.span>{display}</motion.span>;
-};
+import { Layers, Play, Clock, ArrowLeft, ArrowUpRight, X, AlertCircle } from 'lucide-react';
+import { Button, Badge, EmptyState } from '../components/ui';
 
 export const WorkflowDetail = () => {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
-  const { data: wf, isLoading } = useQuery({ 
+  const [showModal, setShowModal] = useState(false);
+  const [inputJson, setInputJson] = useState('{}');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const { data: wf, isLoading: wfLoading } = useQuery({ 
     queryKey: ['workflow', id], 
     queryFn: () => api.getWorkflow(id!) 
   });
-  
-  const [showModal, setShowModal] = useState(false);
-  const [inputJson, setInputJson] = useState('{}');
+
+  const { data: runsResponse } = useQuery({ 
+    queryKey: ['runs'], 
+    queryFn: () => api.getRuns() 
+  });
+
+  const wfRuns = (runsResponse?.data || []).filter((r: any) => r.workflow_id === id);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showModal) {
+        setShowModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showModal]);
 
   const startRunMutation = useMutation({
     mutationFn: () => {
-      const input = JSON.parse(inputJson);
-      return api.startRun(id!, input);
+      setErrorMsg(null);
+      let parsed;
+      try {
+        parsed = JSON.parse(inputJson);
+      } catch (e: any) {
+        throw new Error('Invalid JSON payload: ' + e.message);
+      }
+      return api.startRun(id!, parsed);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workflow', id] });
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['runs'] });
+      queryClient.invalidateQueries({ queryKey: ['overview'] });
       setShowModal(false);
       setInputJson('{}');
     },
-    onError: (error) => {
-      alert("Failed to start run: " + error.message);
+    onError: (err: any) => {
+      setErrorMsg(err.message);
     }
   });
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: { opacity: 1, transition: { staggerChildren: 0.05 } }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 10 },
-    show: { opacity: 1, y: 0 }
-  };
-
-  if (isLoading || !wf) return (
-    <div className="page-content" style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
-      {[1,2,3,4].map(i => (
-        <div key={i} className="card" style={{ flex: '1 1 200px', height: '120px', opacity: 0.5 }}>
-          <div style={{ height: '16px', width: '40%', background: 'var(--border)', borderRadius: '4px', marginBottom: '1rem' }} />
-          <div style={{ height: '32px', width: '60%', background: 'var(--border)', borderRadius: '4px' }} />
+  if (wfLoading || !wf) {
+    return (
+      <div className="page-container">
+        <div style={{ padding: '3.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+          Loading workflow definition...
         </div>
-      ))}
-    </div>
-  );
+      </div>
+    );
+  }
 
   return (
-    <motion.div initial="hidden" animate="show" variants={containerVariants} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <Box size={24} color="var(--text-tertiary)" />
-          <span>{wf.name}</span>
-          <span className="badge badge-info">v{wf.version}</span>
-          <span className={`badge badge-${wf.status === 'active' ? 'success' : 'warning'}`}>{wf.status}</span>
-        </div>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
-          <Play size={16} fill="currentColor" /> Start Run
-        </button>
+    <div className="page-container">
+      {/* Back button */}
+      <div style={{ marginBottom: '1rem' }}>
+        <Link to="/workflows">
+          <Button variant="ghost" size="sm" icon={<ArrowLeft size={14} />}>
+            Back to Workflows
+          </Button>
+        </Link>
       </div>
 
-      <AnimatePresence>
-        {showModal && (
-          <motion.div 
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="modal-overlay"
-          >
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              className="modal-content"
-            >
-              <div className="modal-header">
-                Start Run
-              </div>
-              <div className="modal-body flex" style={{ flexDirection: 'column', gap: '1rem' }}>
-                <div>
-                  <label>Input (JSON)</label>
-                  <textarea 
-                    value={inputJson} 
-                    onChange={e => setInputJson(e.target.value)} 
-                    style={{ width: '100%', height: '150px', fontFamily: 'var(--font-mono)' }} 
-                  />
+      {/* Header Card */}
+      <div className="card" style={{ marginBottom: '1.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginBottom: '0.375rem' }}>
+              <Layers size={20} style={{ color: 'var(--accent)' }} />
+              <h1 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 600 }}>{wf.name}</h1>
+              <Badge variant="primary">v{wf.version}</Badge>
+            </div>
+            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
+              {wf.description || 'No description provided.'}
+            </p>
+          </div>
+
+          <Button variant="primary" size="sm" icon={<Play size={14} />} onClick={() => setShowModal(true)}>
+            Start Execution
+          </Button>
+        </div>
+      </div>
+
+      {/* Associated Runs Table */}
+      <div className="table-wrapper">
+        <div className="table-header-bar">
+          <div className="table-header-title">
+            <Clock size={16} style={{ color: 'var(--accent)' }} />
+            <span>Executions of this Workflow</span>
+            <Badge variant="neutral">{wfRuns.length} runs</Badge>
+          </div>
+        </div>
+
+        <div className="table-container">
+          {wfRuns.length === 0 ? (
+            <EmptyState
+              title="No executions recorded"
+              description="This workflow has not been executed yet. Click Start Execution to trigger a run."
+              action={
+                <Button variant="primary" size="sm" icon={<Play size={14} />} onClick={() => setShowModal(true)}>
+                  Start Execution
+                </Button>
+              }
+            />
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Run ID</th>
+                  <th>Status</th>
+                  <th>Duration</th>
+                  <th>Attempts</th>
+                  <th>Started</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {wfRuns.map((run: any) => {
+                  let badgeType = 'badge-info';
+                  if (run.status === 'completed') badgeType = 'badge-success';
+                  if (run.status === 'failed') badgeType = 'badge-error';
+                  if (run.status === 'cancelled') badgeType = 'badge-warning';
+
+                  const duration = run.completed_at && (run.started_at || run.created_at)
+                    ? new Date(run.completed_at).getTime() - new Date(run.started_at || run.created_at).getTime()
+                    : null;
+
+                  return (
+                    <tr key={run.id}>
+                      <td className="font-mono">
+                        <Link to={`/runs/${run.id}`} style={{ color: 'var(--accent)' }}>
+                          {run.id}
+                        </Link>
+                      </td>
+                      <td>
+                        <span className={`badge ${badgeType}`}>
+                          <span className="badge-dot" />
+                          {run.status}
+                        </span>
+                      </td>
+                      <td className="tabular-nums" style={{ color: 'var(--text-secondary)' }}>
+                        {duration != null ? `${duration}ms` : '—'}
+                      </td>
+                      <td className="tabular-nums" style={{ color: 'var(--text-secondary)' }}>
+                        {run.attempts ?? 1}
+                      </td>
+                      <td className="tabular-nums" style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
+                        {run.started_at || run.created_at 
+                          ? formatDistanceToNow(new Date(run.started_at || run.created_at), { addSuffix: true }) 
+                          : '—'}
+                      </td>
+                      <td>
+                        <Link to={`/runs/${run.id}`} className="btn btn-sm btn-ghost" style={{ gap: '0.25rem' }}>
+                          Inspect <ArrowUpRight size={12} />
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* Start Run Modal */}
+      {showModal && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span>Start Execution: {wf.name}</span>
+              <button 
+                className="btn btn-sm btn-ghost" 
+                onClick={() => setShowModal(false)}
+                aria-label="Close dialog"
+                style={{ padding: '0.25rem' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {errorMsg && (
+                <div style={{ padding: '0.625rem', backgroundColor: 'var(--status-error-bg)', border: '1px solid var(--status-error-border)', borderRadius: 'var(--radius-sm)', color: 'var(--status-error)', fontSize: 'var(--font-size-xs)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <AlertCircle size={14} /> {errorMsg}
                 </div>
+              )}
+              <div>
+                <label>Input Arguments (JSON format)</label>
+                <textarea 
+                  value={inputJson} 
+                  onChange={e => setInputJson(e.target.value)} 
+                  rows={6}
+                  className="font-mono"
+                  style={{ fontSize: '12px' }}
+                />
               </div>
-              <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
-                <button className="btn btn-primary" onClick={() => startRunMutation.mutate()} disabled={startRunMutation.isPending}>
-                  {startRunMutation.isPending ? 'Starting...' : 'Start Run'}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="page-content" style={{ flex: 1 }}>
-        <motion.div variants={itemVariants} style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: 'var(--text-lg)' }}>
-          {wf.description || 'No description provided.'}
-        </motion.div>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-          <motion.div variants={itemVariants} className="card">
-            <div className="card-header"><Box size={16} className="text-tertiary"/> Total Runs</div>
-            <div className="card-value"><AnimatedNumber value={wf.stats.totalRuns} /></div>
-          </motion.div>
-          <motion.div variants={itemVariants} className="card">
-            <div className="card-header text-info"><Clock size={16} /> Active Runs</div>
-            <div className="card-value"><AnimatedNumber value={wf.stats.activeRuns} /></div>
-          </motion.div>
-          <motion.div variants={itemVariants} className="card">
-            <div className="card-header text-success"><CheckCircle2 size={16} /> Success Rate</div>
-            <div className="card-value"><AnimatedNumber value={wf.stats.successRate} />%</div>
-          </motion.div>
-          <motion.div variants={itemVariants} className="card">
-            <div className="card-header"><Zap size={16} className="text-tertiary"/> Avg Duration</div>
-            <div className="card-value"><AnimatedNumber value={wf.stats.avgDurationMs} /> <span className="text-lg text-secondary">ms</span></div>
-          </motion.div>
+            </div>
+            <div className="modal-footer">
+              <Button variant="secondary" onClick={() => setShowModal(false)}>
+                Cancel
+              </Button>
+              <Button 
+                variant="primary" 
+                onClick={() => startRunMutation.mutate()} 
+                isLoading={startRunMutation.isPending}
+                icon={<Play size={14} />}
+              >
+                Submit Run
+              </Button>
+            </div>
+          </div>
         </div>
-
-        <motion.div variants={itemVariants} className="card" style={{ padding: 0 }}>
-          <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-subtle)', fontWeight: 600 }}>
-            Recent Runs
-          </div>
-          <div className="table-container">
-            {(!wf.recentRuns || wf.recentRuns.length === 0) ? (
-              <div style={{ padding: '4rem 2rem', textAlign: 'center', color: 'var(--text-tertiary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-                <Clock size={48} color="var(--border-highlight)" />
-                <div>No recent runs found. Start a run to see it here.</div>
-              </div>
-            ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Run ID</th>
-                    <th>Status</th>
-                    <th>Started</th>
-                    <th>Duration</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {wf.recentRuns.map((run: any) => {
-                    let badgeClass = 'badge-info';
-                    if (run.status === 'completed') badgeClass = 'badge-success';
-                    if (run.status === 'failed') badgeClass = 'badge-error';
-                    if (run.status === 'cancelled') badgeClass = 'badge-warning';
-                    
-                    return (
-                      <tr key={run.id}>
-                        <td>
-                          <Link to={`/runs/${run.id}`} className="font-mono">{run.id.slice(0, 8)}...</Link>
-                        </td>
-                        <td>
-                          <span className={`badge ${badgeClass}`}>{run.status}</span>
-                        </td>
-                        <td className="text-secondary">
-                          {run.startedAt ? formatDistanceToNow(new Date(run.startedAt), { addSuffix: true }) : '—'}
-                        </td>
-                        <td>
-                          {run.durationMs ? `${run.durationMs}ms` : '—'}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </motion.div>
-      </div>
-    </motion.div>
+      )}
+    </div>
   );
 };

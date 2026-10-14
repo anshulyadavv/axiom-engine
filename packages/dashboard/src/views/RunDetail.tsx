@@ -3,239 +3,297 @@ import { useQuery } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../api';
 import { formatDistanceToNow, format } from 'date-fns';
-import { CheckCircledIcon, ClockIcon, CrossCircledIcon, UpdateIcon, LightningBoltIcon, Link2Icon, CopyIcon, Component1Icon } from '@radix-ui/react-icons';
-import clsx from 'clsx';
-import { motion } from 'framer-motion';
+import { 
+  Clock, 
+  Copy, 
+  Check, 
+  ArrowLeft, 
+  ChevronDown, 
+  ChevronRight, 
+  AlertTriangle, 
+  Activity,
+  Layers
+} from 'lucide-react';
+import { Button, Badge } from '../components/ui';
 
 export const RunDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState<'timeline' | 'events'>('timeline');
+  const [expandedSteps, setExpandedSteps] = useState<Record<string, boolean>>({});
+
   const { data: run, isLoading } = useQuery({ 
     queryKey: ['run', id], 
     queryFn: () => api.getRunTimeline(id!) 
   });
-  
-  const [activeTab, setActiveTab] = useState<'timeline' | 'events'>('timeline');
 
-  const timelineItems = useMemo(() => {
-    if (!run) return [];
-    const items: Array<{ id: string, type: string, time: Date, data: any }> = [];
-
-    run.steps?.forEach((step: any) => {
-      const time = new Date(step.started_at || Date.now());
-      items.push({ id: `step-${step.step_id}-${step.attempt}`, type: 'step', time, data: step });
-    });
-
-    run.children?.forEach((child: any) => {
-      const time = new Date(child.started_at || child.completed_at || Date.now());
-      items.push({ id: `child-${child.child_run_id}`, type: 'child', time, data: child });
-    });
-
-    if (run.created_at) {
-        items.push({ id: 'run-start', type: 'run_start', time: new Date(run.created_at), data: run });
-    }
-    if (run.completed_at) {
-        items.push({ id: 'run-end', type: 'run_end', time: new Date(run.completed_at), data: run });
-    }
-
-    return items.sort((a, b) => a.time.getTime() - b.time.getTime());
-  }, [run]);
+  const toggleStep = (stepKey: string) => {
+    setExpandedSteps(prev => ({ ...prev, [stepKey]: !prev[stepKey] }));
+  };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: { opacity: 1, transition: { staggerChildren: 0.05 } }
+  const sanitizePayload = (obj: any): string => {
+    if (!obj) return 'null';
+    try {
+      const sanitized = JSON.parse(JSON.stringify(obj, (key, value) => {
+        if (/password|secret|token|apikey|authorization/i.test(key)) {
+          return '******** [REDACTED]';
+        }
+        return value;
+      }));
+      return JSON.stringify(sanitized, null, 2);
+    } catch {
+      return String(obj);
+    }
   };
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 10 },
-    show: { opacity: 1, y: 0 }
-  };
+  const durationMs = useMemo(() => {
+    if (!run?.started_at && !run?.created_at) return null;
+    const start = new Date(run.started_at || run.created_at).getTime();
+    if (!run.completed_at) return null;
+    const end = new Date(run.completed_at).getTime();
+    return Math.max(0, end - start);
+  }, [run]);
 
-  if (isLoading || !run) return (
-    <div className="page-content" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div className="card" style={{ height: '100px', opacity: 0.5 }} />
-      <div className="card" style={{ height: '400px', opacity: 0.5 }} />
-    </div>
-  );
-
-  let headerBadge = 'badge-info';
-  if (run.status === 'completed') headerBadge = 'badge-success';
-  if (run.status === 'failed' || run.status === 'version_mismatch') headerBadge = 'badge-error';
-  if (run.status === 'cancelled') headerBadge = 'badge-warning';
-
-  return (
-    <motion.div initial="hidden" animate="show" variants={containerVariants} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div className="page-header gap-4">
-        <span style={{ fontFamily: 'var(--font-mono)' }}>{run.id}</span>
-        <button className="btn btn-ghost" onClick={() => copyToClipboard(run.id)} style={{ padding: '0.25rem' }} title="Copy ID">
-          <CopyIcon width={16} height={16} />
-        </button>
-        <span className={`badge ${headerBadge}`}>{run.status}</span>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '1rem', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>
-          <span className="flex items-center gap-2"><ClockIcon width={16} height={16} /> Started {run.started_at ? formatDistanceToNow(new Date(run.started_at), { addSuffix: true }) : 'Pending'}</span>
+  if (isLoading || !run) {
+    return (
+      <div className="page-container">
+        <div style={{ padding: '3.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+          Loading execution timeline...
         </div>
       </div>
-      
-      <div className="page-content" style={{ flex: 1 }}>
-        <motion.div variants={itemVariants} className="card" style={{ padding: 0, marginBottom: '2rem', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-tertiary)' }}>
-            <button 
-              onClick={() => setActiveTab('timeline')}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                borderBottom: activeTab === 'timeline' ? '2px solid var(--accent)' : '2px solid transparent',
-                padding: '1rem 1.5rem',
-                color: activeTab === 'timeline' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                fontWeight: activeTab === 'timeline' ? 600 : 500,
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              Execution Timeline
-            </button>
-            <button 
-              onClick={() => setActiveTab('events')}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                borderBottom: activeTab === 'events' ? '2px solid var(--accent)' : '2px solid transparent',
-                padding: '1rem 1.5rem',
-                color: activeTab === 'events' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                fontWeight: activeTab === 'events' ? 600 : 500,
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              Raw Semantic Events
-            </button>
-          </div>
-          
-          <div style={{ padding: '1.5rem', flex: 1, overflowY: 'auto' }}>
-            {activeTab === 'timeline' && (
-              <div style={{ fontFamily: 'var(--font-mono)' }}>
-                {timelineItems.length === 0 && <div style={{ color: 'var(--text-tertiary)', padding: '2rem', textAlign: 'center' }}>No execution history yet.</div>}
-                
-                {timelineItems.map((item, idx) => {
-                  let icon = <ClockIcon width={16} height={16} color="var(--text-tertiary)" />;
-                  let color = 'var(--text-secondary)';
-                  let label = item.type;
-                  let details = '';
+    );
+  }
 
-                  if (item.type === 'step') {
-                      label = `Step: ${item.data.step_id}`;
-                      details = `${item.data.duration_ms ? item.data.duration_ms + 'ms' : '—'}`;
-                      if (item.data.status === 'completed') {
-                          icon = <CheckCircledIcon width={16} height={16} color="var(--success)" />;
-                          color = 'var(--text-primary)';
-                      } else if (item.data.status === 'failed') {
-                          icon = <CrossCircledIcon width={16} height={16} color="var(--error)" />;
-                          color = 'var(--error)';
-                      } else if (item.data.status === 'running') {
-                          icon = <UpdateIcon width={16} height={16} color="var(--info)" />;
-                          color = 'var(--info)';
-                      }
-                  } else if (item.type === 'child') {
-                      label = `Child Workflow: ${item.data.parent_operation_id}`;
-                      details = item.data.child_run_id;
-                      icon = <Link2Icon width={16} height={16} color="var(--accent)" />;
-                      if (item.data.status === 'completed') {
-                          color = 'var(--success)';
-                      } else if (item.data.status === 'failed') {
-                          color = 'var(--error)';
-                          icon = <CrossCircledIcon width={16} height={16} color="var(--error)" />;
-                      } else {
-                          color = 'var(--info)';
-                      }
-                  } else if (item.type === 'run_start') {
-                      label = `Workflow Started: ${run.workflowName}@${run.workflow_version}`;
-                      icon = <LightningBoltIcon width={16} height={16} color="var(--accent)" />;
-                      color = 'var(--text-primary)';
-                  } else if (item.type === 'run_end') {
-                      label = `Workflow Completed`;
-                      icon = <CheckCircledIcon width={16} height={16} color="var(--success)" />;
-                      if (run.status === 'failed') {
-                          label = 'Workflow Failed';
-                          icon = <CrossCircledIcon width={16} height={16} color="var(--error)" />;
-                          color = 'var(--error)';
-                      } else {
-                          color = 'var(--text-primary)';
-                      }
-                  }
+  let statusVariant: 'success' | 'error' | 'warning' | 'info' = 'info';
+  if (run.status === 'completed') statusVariant = 'success';
+  if (run.status === 'failed') statusVariant = 'error';
+  if (run.status === 'cancelled') statusVariant = 'warning';
 
-                  const rowContent = (
-                    <>
-                      <div style={{ width: '80px', fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>
-                        {format(item.time, 'HH:mm:ss.SSS')}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px' }}>
-                        {icon}
-                      </div>
-                      <span style={{ flex: 1, fontWeight: item.type === 'run_start' || item.type === 'run_end' ? 600 : 500 }}>{label}</span>
-                      {item.type === 'step' && item.data.attempt > 1 && <span style={{ color: 'var(--warning)', fontSize: 'var(--text-xs)', padding: '0 1rem' }}>Attempt {item.data.attempt}</span>}
-                      <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)' }}>{details}</span>
-                    </>
-                  );
-
-                  if (item.type === 'child' && item.data.child_run_id) {
-                    return (
-                      <Link to={`/runs/${item.data.child_run_id}`} key={item.id} style={{ display: 'flex', alignItems: 'center', padding: '0.75rem 1rem', color, borderBottom: idx < timelineItems.length - 1 ? '1px solid var(--border-subtle)' : 'none', textDecoration: 'none', transition: 'background-color 0.2s', borderRadius: '4px' }} className="timeline-link">
-                        {rowContent}
-                      </Link>
-                    );
-                  }
-
-                  return (
-                    <div key={item.id} style={{ display: 'flex', alignItems: 'center', padding: '0.75rem 1rem', color, borderBottom: idx < timelineItems.length - 1 ? '1px solid var(--border-subtle)' : 'none', borderRadius: '4px', transition: 'background-color 0.2s' }} className="timeline-link">
-                      {rowContent}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            
-            {activeTab === 'events' && (
-              <div className="table-container">
-                <table style={{ fontFamily: 'var(--font-mono)' }}>
-                  <thead>
-                    <tr>
-                      <th>Seq</th>
-                      <th>Type</th>
-                      <th>Timestamp</th>
-                      <th>Data</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {run.events?.map((event: any, idx: number) => (
-                      <motion.tr 
-                        key={event.id}
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.02 }}
-                      >
-                        <td style={{ color: 'var(--text-tertiary)' }}>{event.sequence_number}</td>
-                        <td style={{ fontWeight: 500, color: 'var(--accent)' }}>{event.event_type}</td>
-                        <td className="text-secondary">
-                          {new Date(event.timestamp).toLocaleTimeString()}
-                        </td>
-                        <td className="text-secondary" style={{ maxWidth: '400px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {event.data ? JSON.stringify(event.data) : '{}'}
-                        </td>
-                      </motion.tr>
-                    ))}
-                    {(!run.events || run.events.length === 0) && (
-                        <tr><td colSpan={4} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-tertiary)' }}>No events recorded.</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </motion.div>
+  return (
+    <div className="page-container">
+      {/* Back button & Breadcrumb */}
+      <div style={{ marginBottom: '1rem' }}>
+        <Link to="/runs">
+          <Button variant="ghost" size="sm" icon={<ArrowLeft size={14} />}>
+            Back to Executions
+          </Button>
+        </Link>
       </div>
-    </motion.div>
+
+      {/* Header Card */}
+      <div className="card" style={{ marginBottom: '1.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginBottom: '0.375rem' }}>
+              <Badge variant={statusVariant} dot>
+                {run.status?.toUpperCase()}
+              </Badge>
+              <span className="font-mono" style={{ fontSize: 'var(--font-size-md)', fontWeight: 600 }}>
+                {run.id}
+              </span>
+              <button 
+                className="btn btn-sm btn-ghost" 
+                onClick={() => copyToClipboard(run.id)}
+                title="Copy Run ID"
+                style={{ padding: '2px 6px' }}
+              >
+                {copied ? <Check size={12} className="text-success" /> : <Copy size={12} />}
+              </button>
+            </div>
+
+            <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
+              Workflow: <Link to={`/workflows/${run.workflow_id}`} style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{run.workflow_name || run.workflow_id}</Link>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Duration</div>
+              <div className="tabular-nums" style={{ fontSize: 'var(--font-size-base)', fontWeight: 600 }}>
+                {durationMs != null ? `${durationMs}ms` : 'In progress'}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Attempts</div>
+              <div className="tabular-nums" style={{ fontSize: 'var(--font-size-base)', fontWeight: 600 }}>
+                {run.attempts ?? 1}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Started</div>
+              <div className="tabular-nums" style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
+                {run.started_at || run.created_at ? format(new Date(run.started_at || run.created_at), 'yyyy-MM-dd HH:mm:ss') : '—'}
+              </div>
+            </div>
+            {run.completed_at && (
+              <div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Completed</div>
+                <div className="tabular-nums" style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
+                  {format(new Date(run.completed_at), 'yyyy-MM-dd HH:mm:ss')}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Failure summary banner if run failed */}
+        {run.status === 'failed' && (
+          <div style={{ marginTop: '1rem', padding: '0.75rem 1rem', backgroundColor: 'var(--status-error-bg)', border: '1px solid var(--status-error-border)', borderRadius: 'var(--radius-md)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--status-error)', fontWeight: 600, fontSize: 'var(--font-size-sm)' }}>
+              <AlertTriangle size={16} /> Terminal Execution Failure
+            </div>
+            <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)', marginTop: '4px' }}>
+              {run.error || 'The workflow encountered a non-recoverable error during step execution.'}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Navigation Tabs */}
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--border-default)' }}>
+        <button 
+          className={`filter-tab ${activeTab === 'timeline' ? 'active' : ''}`}
+          style={{ padding: '0.5rem 1rem', borderRadius: 'var(--radius-md) var(--radius-md) 0 0', borderBottom: activeTab === 'timeline' ? '2px solid var(--accent)' : 'none' }}
+          onClick={() => setActiveTab('timeline')}
+        >
+          <Layers size={14} style={{ display: 'inline', marginRight: '4px' }} /> Step Timeline ({run.steps?.length || 0})
+        </button>
+        <button 
+          className={`filter-tab ${activeTab === 'events' ? 'active' : ''}`}
+          style={{ padding: '0.5rem 1rem', borderRadius: 'var(--radius-md) var(--radius-md) 0 0', borderBottom: activeTab === 'events' ? '2px solid var(--accent)' : 'none' }}
+          onClick={() => setActiveTab('events')}
+        >
+          <Activity size={14} style={{ display: 'inline', marginRight: '4px' }} /> Journal Events ({run.events?.length || 0})
+        </button>
+      </div>
+
+      {/* Tab 1: Step Timeline */}
+      {activeTab === 'timeline' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {!run.steps || run.steps.length === 0 ? (
+            <div className="card" style={{ padding: '3.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+              No discrete step checkpoints recorded for this execution.
+            </div>
+          ) : (
+            run.steps.map((step: any, idx: number) => {
+              const stepKey = `step-${step.step_id}-${step.attempt || idx}`;
+              const isExpanded = !!expandedSteps[stepKey];
+
+              let stepVariant: 'success' | 'error' | 'info' = 'info';
+              if (step.status === 'completed') stepVariant = 'success';
+              if (step.status === 'failed') stepVariant = 'error';
+
+              return (
+                <div key={stepKey} className="step-card">
+                  <div 
+                    style={{ 
+                    padding: '0.75rem 1rem', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    userSelect: 'none'
+                  }}
+                  onClick={() => toggleStep(stepKey)}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    <span className="font-mono" style={{ fontWeight: 600, fontSize: 'var(--font-size-sm)' }}>
+                      {step.step_id}
+                    </span>
+                    <Badge variant={stepVariant} dot>
+                      {step.status}
+                    </Badge>
+                  </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', fontSize: 'var(--font-size-xs)' }}>
+                      <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                        Attempt {step.attempt ?? 1}
+                      </span>
+                      <span className="tabular-nums" style={{ color: 'var(--text-secondary)' }}>
+                        {step.duration_ms != null ? `${step.duration_ms}ms` : '—'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid var(--border-default)', backgroundColor: 'var(--bg-surface-elevated)' }}>
+                      {step.error && (
+                        <div style={{ marginBottom: '0.75rem', padding: '0.5rem 0.75rem', backgroundColor: 'var(--status-error-bg)', border: '1px solid var(--status-error-border)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--font-size-xs)', color: 'var(--status-error)' }}>
+                          <strong>Error:</strong> {step.error}
+                        </div>
+                      )}
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div>
+                          <label style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Step Input Payload</label>
+                          <pre className="font-mono" style={{ fontSize: '11px', padding: '0.5rem', backgroundColor: 'var(--bg-app)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', overflowX: 'auto', maxHeight: '160px' }}>
+                            {sanitizePayload(step.input)}
+                          </pre>
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Step Output Payload</label>
+                          <pre className="font-mono" style={{ fontSize: '11px', padding: '0.5rem', backgroundColor: 'var(--bg-app)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-sm)', overflowX: 'auto', maxHeight: '160px' }}>
+                            {sanitizePayload(step.output)}
+                          </pre>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* Tab 2: Journal Events */}
+      {activeTab === 'events' && (
+        <div className="table-wrapper">
+          <div className="table-container">
+            {!run.events || run.events.length === 0 ? (
+              <div style={{ padding: '3.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                No journal events captured for this execution.
+              </div>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Seq</th>
+                    <th>Event Type</th>
+                    <th>Timestamp</th>
+                    <th>Payload / Summary</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {run.events.map((ev: any, idx: number) => (
+                    <tr key={idx}>
+                      <td className="tabular-nums" style={{ color: 'var(--text-muted)', width: '60px' }}>
+                        #{idx + 1}
+                      </td>
+                      <td style={{ fontWeight: 600 }}>
+                        {ev.type || ev.event_type}
+                      </td>
+                      <td className="tabular-nums" style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
+                        {ev.timestamp ? format(new Date(ev.timestamp), 'HH:mm:ss.SSS') : '—'}
+                      </td>
+                      <td className="font-mono" style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                        {typeof ev.data === 'string' ? ev.data : JSON.stringify(ev.data || ev.payload || {})}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 };

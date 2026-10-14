@@ -1,0 +1,13 @@
+<svg viewBox="0 0 240 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Axiom Engine Symbol: Resilient Delta / State Progression -->
+  <g transform="translate(2, 2)">
+    <!-- Checkpoint Anchor & Primary Apex -->
+    <path d="M14 2L3 24H8.5L15 11L19 19H14L11.5 24H21.5L17.5 16L14 2Z" fill="#2563EB"/>
+    <!-- Deterministic Forward State Transition -->
+    <path d="M16.5 16L21.5 26H26.5L29.5 20L24.5 20L22 23L19 16H16.5Z" fill="currentColor"/>
+  </g>
+  <!-- Wordmark -->
+  <text x="44" y="24" font-family="'Inter', -apple-system, BlinkMacSystemFont, sans-serif" font-size="20" font-weight="700" letter-spacing="-0.02em" fill="currentColor">
+    Axiom <tspan font-weight="500" opacity="0.8">Engine</tspan>
+  </text>
+</svg>

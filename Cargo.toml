@@ -5,7 +5,7 @@ members = [
     "crates/axiom-api",
     "crates/axiom-runtime",
     "crates/axiom-worker",
-    "crates/axiom-cli", "scratch/rand_test",
+    "crates/axiom-cli",
 ]
 resolver = "2"
 
@@ -19,3 +19,6 @@ thiserror = "1"
 anyhow = "1"
 tracing = "0.1"
 sqlx = { version = "0.7", features = ["postgres", "runtime-tokio", "uuid", "chrono", "json"] }
+argon2 = "0.5"
+aes-gcm = "0.10"
+redis = { version = "0.25", features = ["tokio-comp", "connection-manager"] }

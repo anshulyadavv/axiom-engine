@@ -3,7 +3,7 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
-use axiom_core::{TenantId, WorkflowId, RunId};
+use axiom_core::{WorkflowId, RunId};
 use crate::{
     server::AppState,
     error::ApiError,

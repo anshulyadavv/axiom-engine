@@ -24,3 +24,9 @@ metrics = "0.22"
 metrics-exporter-prometheus = "0.13"
 rand = "0.8"
 sqlx = { workspace = true }
+argon2 = { workspace = true }
+aes-gcm = { workspace = true }
+redis = { workspace = true }
+futures = "0.3"
+tokio-stream = { version = "0.1", features = ["sync"] }
+
