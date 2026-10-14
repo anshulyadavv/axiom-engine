@@ -11,6 +11,9 @@
   --bg-glass: rgba(255, 255, 255, 0.75);
   --border-glass: rgba(226, 232, 240, 0.8);
 
+  --scrollbar-thumb: rgba(100, 116, 139, 0.28);
+  --scrollbar-thumb-hover: rgba(71, 85, 105, 0.55);
+
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-muted: #64748b;
@@ -82,6 +85,9 @@
   --bg-glass: rgba(17, 23, 38, 0.72);
   --border-glass: rgba(255, 255, 255, 0.08);
 
+  --scrollbar-thumb: rgba(148, 163, 184, 0.22);
+  --scrollbar-thumb-hover: rgba(203, 213, 225, 0.45);
+
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
   --text-muted: #94a3b8;
@@ -130,6 +136,34 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+/* Custom Floating Precision Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 html, body {
@@ -294,7 +328,9 @@ textarea:focus-visible {
   flex-direction: column;
   min-width: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
+  scrollbar-gutter: stable;
 }
 
 /* Top Bar */
@@ -353,6 +389,18 @@ textarea:focus-visible {
   max-width: 1560px;
   margin: 0 auto;
   width: 100%;
+  animation: page-fade-in 0.15s ease-out;
+}
+
+@keyframes page-fade-in {
+  from {
+    opacity: 0.94;
+    transform: translateY(1px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .page-header {
