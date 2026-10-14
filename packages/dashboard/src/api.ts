@@ -58,9 +58,13 @@ export interface UserInfo {
 }
 
 export function getApiConfig() {
+  const envUrl = (import.meta as any).env?.VITE_API_BASE_URL;
+  const defaultUrl = envUrl ? (envUrl.endsWith('/v1') ? envUrl : `${envUrl.replace(/\/+$/, '')}/v1`) : 'http://localhost:3000/v1';
+  const envKey = (import.meta as any).env?.VITE_API_KEY;
+
   return {
-    url: localStorage.getItem('axiom_api_url') || 'http://localhost:3000/v1',
-    key: localStorage.getItem('axiom_api_key') || 'axm_live_dummykey'
+    url: localStorage.getItem('axiom_api_url') || defaultUrl,
+    key: localStorage.getItem('axiom_api_key') || envKey || 'axm_live_dummykey'
   };
 }
 

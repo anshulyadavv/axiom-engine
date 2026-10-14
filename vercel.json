@@ -1,29 +1,12 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "services": {
-    "axiom-api": {
-      "root": "crates/axiom-api",
-      "runtime": "rust"
-    },
-    "axiom-cli": {
-      "root": "crates/axiom-cli",
-      "runtime": "rust"
-    },
-    "axiom-worker": {
-      "root": "crates/axiom-worker",
-      "runtime": "rust"
-    },
-    "dashboard": {
-      "root": "packages/dashboard",
-      "framework": "vite"
-    }
-  },
+  "framework": "vite",
+  "buildCommand": "pnpm --filter dashboard build",
+  "outputDirectory": "packages/dashboard/dist",
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": {
-        "service": "dashboard"
-      }
+      "destination": "/index.html"
     }
   ]
-}
+}
