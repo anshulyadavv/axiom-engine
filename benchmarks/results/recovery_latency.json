@@ -1,0 +1,41 @@
+﻿{
+    "experiment":  "worker crash recovery latency",
+    "git_commit":  "a25aee13bbea562ee79c9826ab170f3b59d0f7e0",
+    "date":  "2026-10-21T17:19:57.6663203+05:30",
+    "command":  "powershell -File scripts/benchmark.ps1 -Command recovery -Runs 10 -LeaseTtlMs 5000",
+    "sample_count":  10,
+    "warmup_count":  0,
+    "hardware":  {
+                     "cpu":  "Intel(R) Core(TM) i3-1005G1 CPU @ 1.20GHz (2 physical cores, 4 logical processors)",
+                     "ram":  "7.80 GB (8,375,230,464 bytes)",
+                     "os":  "Microsoft Windows 10 Pro (Version 10.0.19045, Build 19045)"
+                 },
+    "dependencies":  {
+                         "postgres_version":  "PostgreSQL 15.19 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit (Docker)",
+                         "nats_version":  "nats-server: v2.10.29 (Docker)"
+                     },
+    "trials_requested":  10,
+    "trials_completed":  10,
+    "min_ms":  4365.1819000000005,
+    "median_ms":  4636.25305,
+    "max_ms":  5478.0485,
+    "breakdown":  {
+                      "lease_ttl_ms":  5000,
+                      "scheduler_poll_interval_ms":  2000,
+                      "estimated_remaining_lease_ttl_ms":  3800,
+                      "estimated_scheduler_poll_jitter_ms":  "0 to 2000 ms (uniform distribution, average 1000 ms)",
+                      "estimated_replay_and_spawn_ms":  "150 to 300 ms (sidecar spawn + replay of step1)"
+                  },
+    "raw_measurements_ms":  [
+                                4365.1819000000005,
+                                4397.0263,
+                                4548.4874,
+                                4565.4186,
+                                4613.5938000000006,
+                                4658.9123,
+                                4822.1345,
+                                4937.7884,
+                                5042.3192,
+                                5478.0485
+                            ]
+}

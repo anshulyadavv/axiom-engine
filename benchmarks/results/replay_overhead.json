@@ -1,0 +1,108 @@
+{
+  "git_commit": "a25aee13bbea562ee79c9826ab170f3b59d0f7e0",
+  "date": "2026-10-21T17:07:22.1907700+05:30",
+  "command": "powershell -File scripts/benchmark.ps1 -Command replay -Runs 20 -WarmupRuns 5",
+  "sample_count": 20,
+  "warmup_count": 5,
+  "hardware": {
+    "cpu": "Intel(R) Core(TM) i3-1005G1 CPU @ 1.20GHz (2 physical cores, 4 logical processors)",
+    "ram": "7.80 GB (8,375,230,464 bytes)",
+    "os": "Microsoft Windows 10 Pro (Version 10.0.19045, Build 19045)"
+  },
+  "dependencies": {
+    "postgres_version": "PostgreSQL 15.19 on x86_64-pc-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit (Docker)",
+    "nats_version": "nats-server: v2.10.29 (Docker)"
+  },
+  "experiment": "replay overhead",
+  "timing_definition": "Timing starts when JSON resume_workflow payload is written to the sidecar process stdin pipe and ends when the complete JSON response line (ScheduleStep or CompleteWorkflow) is read and parsed from stdout. Sidecar process spawn and V8 cold start are NOT included (the process is already warm).",
+  "history_length_definition": "Count of past StepCompleted semantic events in the history array passed to resume_workflow (replaying step_0 through step_{N-1} in loop_workflow).",
+  "results": {
+    "10": {
+      "events_count": 10,
+      "repetitions": 20,
+      "min_ms": 0.3039,
+      "median_ms": 0.4982,
+      "max_ms": 1.5746,
+      "raw_timings_ms": [
+        0.3039,
+        0.3511,
+        0.3695,
+        0.3788,
+        0.3896,
+        0.3948,
+        0.4228,
+        0.4228,
+        0.4754,
+        0.4936,
+        0.5028,
+        0.5369,
+        0.5505,
+        0.6373,
+        0.649,
+        0.7097,
+        0.7146,
+        0.859,
+        1.4929,
+        1.5746
+      ]
+    },
+    "100": {
+      "events_count": 100,
+      "repetitions": 20,
+      "min_ms": 0.4979,
+      "median_ms": 0.8715999999999999,
+      "max_ms": 33.9053,
+      "raw_timings_ms": [
+        0.4979,
+        0.5593,
+        0.5637,
+        0.5686,
+        0.6072,
+        0.6114,
+        0.669,
+        0.7319,
+        0.83,
+        0.8603,
+        0.8829,
+        0.9004,
+        0.9043,
+        1.247,
+        1.3686,
+        2.0571,
+        2.1083,
+        2.2673,
+        2.7907,
+        33.9053
+      ]
+    },
+    "1000": {
+      "events_count": 1000,
+      "repetitions": 20,
+      "min_ms": 1.9205,
+      "median_ms": 3.38895,
+      "max_ms": 22.2176,
+      "raw_timings_ms": [
+        1.9205,
+        2.0756,
+        2.1466,
+        2.7845,
+        2.8033,
+        2.8715,
+        2.9273,
+        3.0186,
+        3.189,
+        3.3087,
+        3.4692,
+        4.61,
+        4.8455,
+        5.7232,
+        5.9138,
+        9.9018,
+        14.2276,
+        15.6909,
+        19.4197,
+        22.2176
+      ]
+    }
+  }
+}

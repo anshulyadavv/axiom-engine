@@ -1,0 +1,5 @@
+$env:AXIOM_RATE_LIMIT_DISABLED = "1"
+$env:DATABASE_URL = "postgres://axiom:password@localhost:5432/axiom_engine"
+$env:NATS_URL = "nats://localhost:4222"
+$env:PORT = "3000"
+& "$PSScriptRoot\..\target\debug\axiom-api.exe"

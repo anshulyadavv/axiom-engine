@@ -1,0 +1,71 @@
+﻿{
+    "experiment":  "end-to-end workflow completion throughput",
+    "timestamp":  "2026-10-21T16:55:07.6136032+05:30",
+    "workflow":  "crash_recovery_workflow (3 steps)",
+    "target_runs":  5,
+    "completed_runs":  5,
+    "worker_count":  1,
+    "scheduler_poll_interval_ms":  2000,
+    "total_wall_clock_sec":  15.759869799999999,
+    "completed_runs_per_sec":  0.31726150427968641,
+    "latency_min_ms":  6722.8018,
+    "latency_median_ms":  7685.3508,
+    "latency_max_ms":  15661.378200000001,
+    "run_records":  [
+                        {
+                            "RunId":  "b1d8da8e-2e86-4be1-b4cd-67d36ea48dc0",
+                            "SubmitTime":  "\/Date(1792581891810)\/",
+                            "EndTime":  {
+                                            "value":  "\/Date(1792581898533)\/",
+                                            "DisplayHint":  2,
+                                            "DateTime":  "21 October 2026 16:54:58"
+                                        },
+                            "DurationMs":  6722.8018,
+                            "Status":  "completed"
+                        },
+                        {
+                            "RunId":  "ec94be59-e942-4b75-b1b7-2ebe8d2543a5",
+                            "SubmitTime":  "\/Date(1792581891834)\/",
+                            "EndTime":  {
+                                            "value":  "\/Date(1792581899221)\/",
+                                            "DisplayHint":  2,
+                                            "DateTime":  "21 October 2026 16:54:59"
+                                        },
+                            "DurationMs":  7386.5480000000007,
+                            "Status":  "completed"
+                        },
+                        {
+                            "RunId":  "395b91fd-10ac-48e1-bf2f-6aaacbb63686",
+                            "SubmitTime":  "\/Date(1792581891853)\/",
+                            "EndTime":  {
+                                            "value":  "\/Date(1792581899539)\/",
+                                            "DisplayHint":  2,
+                                            "DateTime":  "21 October 2026 16:54:59"
+                                        },
+                            "DurationMs":  7685.3508,
+                            "Status":  "completed"
+                        },
+                        {
+                            "RunId":  "e7e8af49-f33b-4ceb-ab37-8023c295d5b6",
+                            "SubmitTime":  "\/Date(1792581891877)\/",
+                            "EndTime":  {
+                                            "value":  "\/Date(1792581899842)\/",
+                                            "DisplayHint":  2,
+                                            "DateTime":  "21 October 2026 16:54:59"
+                                        },
+                            "DurationMs":  7965.0706,
+                            "Status":  "completed"
+                        },
+                        {
+                            "RunId":  "f4596a46-8211-4437-8004-f9a5f3667e65",
+                            "SubmitTime":  "\/Date(1792581891905)\/",
+                            "EndTime":  {
+                                            "value":  "\/Date(1792581907567)\/",
+                                            "DisplayHint":  2,
+                                            "DateTime":  "21 October 2026 16:55:07"
+                                        },
+                            "DurationMs":  15661.378200000001,
+                            "Status":  "completed"
+                        }
+                    ]
+}
