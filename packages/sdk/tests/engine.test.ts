@@ -188,4 +188,59 @@ describe("WorkflowEngine", () => {
             output: { caughtError: "child failed" }
         });
     });
+
+    it("should yield RecordTimestamp on live run and replay recorded timestamp on second run", async () => {
+        const testFlow = workflow("timestamp-flow", 1, async (ctx) => {
+            const time = ctx.now();
+            return { time };
+        });
+
+        engine.register(testFlow);
+
+        // First run (LIVE): yields RecordTimestamp
+        const cmd1 = await engine.resumeWorkflow("timestamp-flow", 1, {}, []);
+        expect(cmd1).toEqual({
+            command_type: "RecordTimestamp"
+        });
+
+        // Second run (REPLAY): consumes TimestampRecorded and completes
+        const recordedTimestamp = 1712345678901;
+        const history = [
+            { sequence_number: 1, type: "TimestampRecorded", data: { value: recordedTimestamp } }
+        ];
+
+        const cmd2 = await engine.resumeWorkflow("timestamp-flow", 1, {}, history);
+        expect(cmd2).toEqual({
+            command_type: "CompleteWorkflow",
+            output: { time: recordedTimestamp }
+        });
+    });
+
+    it("should yield RecordRandom on live run and replay recorded random on second run", async () => {
+        const testFlow = workflow("random-flow", 1, async (ctx) => {
+            const rand = ctx.random();
+            return { rand };
+        });
+
+        engine.register(testFlow);
+
+        // First run (LIVE): yields RecordRandom
+        const cmd1 = await engine.resumeWorkflow("random-flow", 1, {}, []);
+        expect(cmd1).toEqual({
+            command_type: "RecordRandom"
+        });
+
+        // Second run (REPLAY): consumes RandomRecorded and completes
+        const recordedRandom = 0.424242;
+        const history = [
+            { sequence_number: 1, type: "RandomRecorded", data: { value: recordedRandom } }
+        ];
+
+        const cmd2 = await engine.resumeWorkflow("random-flow", 1, {}, history);
+        expect(cmd2).toEqual({
+            command_type: "CompleteWorkflow",
+            output: { rand: recordedRandom }
+        });
+    });
 });
+

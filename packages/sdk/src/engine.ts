@@ -88,6 +88,8 @@ export class ContextImpl implements WorkflowContext {
         this.state = new StateClient(runId, stateRequestFn || (() => Promise.resolve({ ok: true, value: undefined })));
     }
 
+    private firstReplayLogged = false;
+
     private consumeEvent(expectedTypes: string[], expectedId?: string): SemanticEvent | null {
         if (this.mode === "LIVE") return null;
         if (this.mode !== "REPLAY") {
@@ -118,6 +120,11 @@ export class ContextImpl implements WorkflowContext {
             throw new DeterminismViolation(
                 `Replay mismatch at index ${this.replayIndex}: expected id "${expectedId}" but found "${event.data?.id}"`
             );
+        }
+
+        if (!this.firstReplayLogged) {
+            this.firstReplayLogged = true;
+            console.error(`[REPLAY_EVENT] timestamp=${new Date().toISOString()} type=${event.type} id=${event.data?.id || ""}`);
         }
 
         this.replayIndex++;
