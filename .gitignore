@@ -14,10 +14,7 @@ build/
 *.log
 scratch/
 chaos-results/
-benchmark.ps1
-chaos.ps1
 cargo_msvc.bat
-storage-report.sql
 packages/dashboard/scripts/
 
 # Editor / OS / AI Tools
@@ -28,11 +25,8 @@ packages/dashboard/scripts/
 .agents/
 skills-lock.json
 AGENTS.md
+docs/archive/
 
-# Docs and Plans (per user setup)
-docs/
-plans/
-axiom-storage/migrations/
 
 # Downloaded tools and installers
 nats-0.1.1-linux-amd64/
