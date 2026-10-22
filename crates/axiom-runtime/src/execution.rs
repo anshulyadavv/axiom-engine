@@ -1,18 +1,14 @@
-use crate::{
-    commands::Command,
-    context::ExecutionContext,
-    state_machine::transition_run_state,
-};
-use axiom_core::{FenceToken, RunId, AxiomError, SemanticEvent, StepStatus};
+use crate::{commands::Command, context::ExecutionContext, state_machine::transition_run_state};
+use axiom_core::{AxiomError, FenceToken, RunId, SemanticEvent, StepStatus};
 use axiom_storage::{
-    Database,
-    traits::{RunRepository, EventRepository, StepRepository},
     models::{EventRow, StepExecutionRow},
+    traits::{EventRepository, RunRepository, StepRepository},
+    Database,
 };
+use chrono::Utc;
 use serde_json::Value;
 use std::sync::Arc;
 use uuid::Uuid;
-use chrono::Utc;
 
 pub trait Workflow: Send + Sync {
     fn execute(&self, ctx: &mut ExecutionContext, input: Value) -> Result<Value, AxiomError>;
@@ -34,7 +30,10 @@ impl ExecutionEngine {
         workflow: &W,
     ) -> Result<Command, AxiomError> {
         // 1. Load Run
-        let run = self.db.get_run(run_id).await?
+        let run = self
+            .db
+            .get_run(run_id)
+            .await?
             .ok_or_else(|| AxiomError::NotFound(format!("Run {}", run_id.0)))?;
 
         // 2. Load Semantic History
@@ -53,15 +52,15 @@ impl ExecutionEngine {
                 ctx.complete_workflow(output)?;
                 ctx.command.unwrap()
             }
-            Err(e) if e.to_string() == "Internal engine error: YIELD" => {
-                ctx.command.ok_or_else(|| AxiomError::Internal("YIELD without command".into()))?
-            }
-            Err(AxiomError::DeterminismViolation(msg)) => {
-                Command::FailWorkflow { error: Value::String(msg) }
-            }
-            Err(e) => {
-                Command::FailWorkflow { error: Value::String(e.to_string()) }
-            }
+            Err(e) if e.to_string() == "Internal engine error: YIELD" => ctx
+                .command
+                .ok_or_else(|| AxiomError::Internal("YIELD without command".into()))?,
+            Err(AxiomError::DeterminismViolation(msg)) => Command::FailWorkflow {
+                error: Value::String(msg),
+            },
+            Err(e) => Command::FailWorkflow {
+                error: Value::String(e.to_string()),
+            },
         };
 
         // 4. Validate State Transition
@@ -87,10 +86,14 @@ impl ExecutionEngine {
                     completed_at: None,
                     duration_ms: None,
                 };
-                self.db.upsert_step_execution(run_id, fence_token, step_row).await?;
+                self.db
+                    .upsert_step_execution(run_id, fence_token, step_row)
+                    .await?;
             }
             Command::CompleteWorkflow { output } => {
-                let event = SemanticEvent::WorkflowCompleted { output: output.clone() };
+                let event = SemanticEvent::WorkflowCompleted {
+                    output: output.clone(),
+                };
                 let evt_row = EventRow {
                     id: Uuid::new_v4(),
                     run_id,
@@ -105,7 +108,9 @@ impl ExecutionEngine {
                 self.db.append_event(run_id, fence_token, evt_row).await?;
             }
             Command::FailWorkflow { error } => {
-                let event = SemanticEvent::WorkflowFailed { error: error.clone() };
+                let event = SemanticEvent::WorkflowFailed {
+                    error: error.clone(),
+                };
                 let evt_row = EventRow {
                     id: Uuid::new_v4(),
                     run_id,

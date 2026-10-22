@@ -1,24 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getApiConfig } from '../api';
-import { 
-  Link2, 
-  Moon, 
-  Sun, 
-  Monitor, 
-  CheckCircle2, 
-  BookOpen, 
-  ArrowUpRight, 
-  AlertCircle, 
-  RefreshCw,
-  Sliders,
-  RotateCcw
-} from 'lucide-react';
+import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { PageHeader, Card, Button, Badge } from '../components/ui';
+import { TelemetryCards } from '../components/TelemetryCards';
 
 export const Settings = () => {
   const [apiUrl, setApiUrl] = useState('');
   const [apiKey, setApiKey] = useState('');
+  const [showApiKey, setShowApiKey] = useState(false);
   const [initialUrl, setInitialUrl] = useState('');
   const [initialKey, setInitialKey] = useState('');
   const [theme, setTheme] = useState<'system' | 'light' | 'dark'>('system');
@@ -93,11 +83,11 @@ export const Settings = () => {
   return (
     <div className="page-container">
       <PageHeader
-        title="Settings & Configuration"
-        description="Configure API connection endpoints, client authentication, and dashboard appearance."
+        title="Settings"
+        description="API endpoints, client authentication, and theme preferences."
         actions={
           isDirty ? (
-            <Badge variant="warning">Unsaved Changes</Badge>
+            <Badge variant="warning">Unsaved changes</Badge>
           ) : undefined
         }
       />
@@ -105,10 +95,10 @@ export const Settings = () => {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '760px' }}>
         
         {/* Section 1: API Connection */}
-        <Card title="API Connection" icon={<Link2 size={16} />}>
+        <Card title="API connection">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div>
-              <label>API Endpoint Base URL</label>
+              <label>API endpoint base URL</label>
               <input 
                 type="text" 
                 value={apiUrl} 
@@ -117,25 +107,47 @@ export const Settings = () => {
                 className="font-mono"
               />
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                Base URL for the Axiom Engine HTTP REST and SSE live telemetry endpoints.
+                Base URL for the Axiom Engine HTTP REST and SSE live event endpoints.
               </div>
             </div>
 
             <div>
-              <label>Default API Key Token</label>
-              <input 
-                type="password" 
-                value={apiKey} 
-                onChange={e => setApiKey(e.target.value)} 
-                placeholder="axm_live_••••••••"
-                className="font-mono"
-              />
+              <label>Default API key token</label>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input 
+                  type={showApiKey ? "text" : "password"} 
+                  value={apiKey} 
+                  onChange={e => setApiKey(e.target.value)} 
+                  placeholder="axm_live_••••••••"
+                  className="font-mono"
+                  style={{ paddingRight: '2.5rem' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowApiKey(prev => !prev)}
+                  title={showApiKey ? "Hide API key" : "View API key"}
+                  aria-label={showApiKey ? "Hide API key" : "View API key"}
+                  className="btn btn-ghost"
+                  style={{
+                    position: 'absolute',
+                    right: '4px',
+                    height: '24px',
+                    width: '28px',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--text-muted)',
+                  }}
+                >
+                  {showApiKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
                 Fallback Bearer authorization header used when no interactive session token is active.
               </div>
             </div>
 
-            {/* Test result feedback banner */}
             {testStatus !== 'idle' && (
               <div style={{
                 padding: '0.625rem 0.875rem',
@@ -144,11 +156,7 @@ export const Settings = () => {
                 border: `1px solid ${testStatus === 'success' ? 'var(--status-success-border)' : testStatus === 'testing' ? 'var(--border-default)' : 'var(--status-error-border)'}`,
                 color: testStatus === 'success' ? 'var(--status-success)' : testStatus === 'testing' ? 'var(--text-secondary)' : 'var(--status-error)',
                 fontSize: 'var(--font-size-xs)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
               }}>
-                {testStatus === 'success' ? <CheckCircle2 size={14} /> : testStatus === 'testing' ? <RefreshCw size={14} className="animate-spin" /> : <AlertCircle size={14} />}
                 <span>{testStatus === 'testing' ? 'Testing connectivity to API...' : testMessage}</span>
               </div>
             )}
@@ -160,24 +168,22 @@ export const Settings = () => {
                   size="sm"
                   onClick={handleTestConnection}
                   isLoading={testStatus === 'testing'}
-                  icon={<RefreshCw size={12} />}
                 >
-                  Test Connection
+                  Test connection
                 </Button>
                 <Button 
                   variant="ghost" 
                   size="sm"
                   onClick={handleResetDefaults}
-                  icon={<RotateCcw size={12} />}
                 >
-                  Reset Defaults
+                  Reset defaults
                 </Button>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 {saveStatus === 'saved' && (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--status-success)', fontSize: 'var(--font-size-xs)' }}>
-                    <CheckCircle2 size={13} /> Settings saved
+                  <span style={{ color: 'var(--status-success)', fontSize: 'var(--font-size-xs)' }}>
+                    Settings saved
                   </span>
                 )}
                 <Button 
@@ -187,7 +193,7 @@ export const Settings = () => {
                   disabled={!isDirty || !apiUrl.trim()}
                   isLoading={saveStatus === 'saving'}
                 >
-                  Save Settings
+                  Save settings
                 </Button>
               </div>
             </div>
@@ -195,7 +201,7 @@ export const Settings = () => {
         </Card>
 
         {/* Section 2: Appearance */}
-        <Card title="Theme & Appearance" icon={<Sliders size={16} />}>
+        <Card title="Appearance">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
             <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', margin: 0 }}>
               Select your preferred visual appearance. Preferences are preserved across browser sessions.
@@ -204,53 +210,55 @@ export const Settings = () => {
               <Button 
                 variant={theme === 'dark' ? 'primary' : 'secondary'}
                 onClick={() => handleThemeChange('dark')}
-                icon={<Moon size={14} />}
               >
-                Dark Theme
+                Dark
               </Button>
               <Button 
                 variant={theme === 'light' ? 'primary' : 'secondary'}
                 onClick={() => handleThemeChange('light')}
-                icon={<Sun size={14} />}
               >
-                Light Theme
+                Light
               </Button>
               <Button 
                 variant={theme === 'system' ? 'primary' : 'secondary'}
                 onClick={() => handleThemeChange('system')}
-                icon={<Monitor size={14} />}
               >
-                System Default
+                System
               </Button>
             </div>
           </div>
         </Card>
 
-        {/* Section 3: Architecture Reference Callout */}
+        {/* Section 3: Experimental (Step 5b) */}
+        <div>
+          <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.75rem' }}>
+            Experimental
+          </h2>
+          <TelemetryCards />
+        </div>
+
+        {/* Section 4: Architecture Reference Callout */}
         <div style={{
           padding: '1rem 1.25rem',
           backgroundColor: 'var(--bg-surface)',
           border: '1px solid var(--border-default)',
-          borderRadius: 'var(--radius-lg)',
+          borderRadius: 'var(--radius-md)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: '1rem',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <BookOpen size={18} style={{ color: 'var(--accent)', flexShrink: 0 }} />
-            <div>
-              <div style={{ fontWeight: 600, fontSize: 'var(--font-size-sm)', color: 'var(--text-primary)' }}>
-                Architecture & Distributed System Invariants
-              </div>
-              <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
-                Learn about synchronous durability points, deterministic replay, and failure taxonomy.
-              </div>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 'var(--font-size-sm)', color: 'var(--text-primary)' }}>
+              Architecture & System Invariants
+            </div>
+            <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
+              Durability points, deterministic replay, and failure taxonomy.
             </div>
           </div>
 
           <Link to="/docs#architecture" className="btn btn-secondary btn-sm" style={{ gap: '0.25rem', flexShrink: 0 }}>
-            Read Docs <ArrowUpRight size={12} />
+            Read docs <ArrowRight size={12} className="link-arrow" />
           </Link>
         </div>
 

@@ -1,7 +1,7 @@
+use crate::server::AppState;
+use axum::extract::State;
 use axum::Json;
 use serde::Serialize;
-use axum::extract::State;
-use crate::server::AppState;
 
 #[derive(Serialize)]
 pub struct HealthResponse {
@@ -31,9 +31,13 @@ pub async fn ready_check(State(state): State<AppState>) -> Json<ReadyResponse> {
         Ok(_) => "ok".to_string(),
         Err(_) => "error".to_string(),
     };
-    
+
     Json(ReadyResponse {
-        status: if pg_status == "ok" { "ready".to_string() } else { "degraded".to_string() },
+        status: if pg_status == "ok" {
+            "ready".to_string()
+        } else {
+            "degraded".to_string()
+        },
         checks: Checks {
             postgres: pg_status,
             nats: "ok".to_string(),
@@ -102,6 +106,6 @@ pub async fn overview_stats(
             active_workers,
             avg_duration_ms,
             success_rate_pct,
-        }
+        },
     }))
 }

@@ -1,8 +1,8 @@
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{Duration, Instant};
 use redis::aio::ConnectionManager;
 use redis::AsyncCommands;
 use serde::{de::DeserializeOwned, Serialize};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, Instant};
 use tracing::{debug, error, info, warn};
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -47,13 +47,21 @@ impl RedisCache {
         let (client, manager) = match redis::Client::open(url.as_str()) {
             Ok(cli) => {
                 // Attempt async connection manager with 2s timeout
-                match tokio::time::timeout(Duration::from_secs(2), ConnectionManager::new(cli.clone())).await {
+                match tokio::time::timeout(
+                    Duration::from_secs(2),
+                    ConnectionManager::new(cli.clone()),
+                )
+                .await
+                {
                     Ok(Ok(mgr)) => {
                         info!("Redis cache connected successfully at {}", url);
                         (Some(cli), Some(mgr))
                     }
                     Ok(Err(e)) => {
-                        warn!("Redis cache connection failed (running in fallback bypass mode): {}", e);
+                        warn!(
+                            "Redis cache connection failed (running in fallback bypass mode): {}",
+                            e
+                        );
                         (Some(cli), None)
                     }
                     Err(_) => {
@@ -95,7 +103,12 @@ impl RedisCache {
 
         // Try reconnecting
         if let Some(ref cli) = self.client {
-            if let Ok(Ok(new_mgr)) = tokio::time::timeout(Duration::from_millis(1500), ConnectionManager::new(cli.clone())).await {
+            if let Ok(Ok(new_mgr)) = tokio::time::timeout(
+                Duration::from_millis(1500),
+                ConnectionManager::new(cli.clone()),
+            )
+            .await
+            {
                 *conn_guard = Some(new_mgr);
                 return true;
             }
@@ -118,24 +131,23 @@ impl RedisCache {
 
         let res: redis::RedisResult<Option<String>> = conn.get(key).await;
         let duration = start.elapsed().as_micros() as u64;
-        self.total_read_duration_micros.fetch_add(duration, Ordering::Relaxed);
+        self.total_read_duration_micros
+            .fetch_add(duration, Ordering::Relaxed);
         self.read_count.fetch_add(1, Ordering::Relaxed);
 
         match res {
-            Ok(Some(raw_json)) => {
-                match serde_json::from_str::<T>(&raw_json) {
-                    Ok(val) => {
-                        self.hits.fetch_add(1, Ordering::Relaxed);
-                        debug!("Cache HIT for key {}", key);
-                        Some(val)
-                    }
-                    Err(e) => {
-                        error!("Cache JSON deserialization error for key {}: {}", key, e);
-                        self.errors.fetch_add(1, Ordering::Relaxed);
-                        None
-                    }
+            Ok(Some(raw_json)) => match serde_json::from_str::<T>(&raw_json) {
+                Ok(val) => {
+                    self.hits.fetch_add(1, Ordering::Relaxed);
+                    debug!("Cache HIT for key {}", key);
+                    Some(val)
                 }
-            }
+                Err(e) => {
+                    error!("Cache JSON deserialization error for key {}: {}", key, e);
+                    self.errors.fetch_add(1, Ordering::Relaxed);
+                    None
+                }
+            },
             Ok(None) => {
                 self.misses.fetch_add(1, Ordering::Relaxed);
                 debug!("Cache MISS for key {}", key);
@@ -171,7 +183,8 @@ impl RedisCache {
 
         let res: redis::RedisResult<()> = conn.set_ex(key, raw_json, ttl_seconds).await;
         let duration = start.elapsed().as_micros() as u64;
-        self.total_write_duration_micros.fetch_add(duration, Ordering::Relaxed);
+        self.total_write_duration_micros
+            .fetch_add(duration, Ordering::Relaxed);
         self.write_count.fetch_add(1, Ordering::Relaxed);
 
         match res {
@@ -231,14 +244,22 @@ impl RedisCache {
 
         let read_cnt = self.read_count.load(Ordering::Relaxed);
         let avg_read_lat = if read_cnt > 0 {
-            Some((self.total_read_duration_micros.load(Ordering::Relaxed) as f64) / (read_cnt as f64) / 1000.0)
+            Some(
+                (self.total_read_duration_micros.load(Ordering::Relaxed) as f64)
+                    / (read_cnt as f64)
+                    / 1000.0,
+            )
         } else {
             None
         };
 
         let write_cnt = self.write_count.load(Ordering::Relaxed);
         let avg_write_lat = if write_cnt > 0 {
-            Some((self.total_write_duration_micros.load(Ordering::Relaxed) as f64) / (write_cnt as f64) / 1000.0)
+            Some(
+                (self.total_write_duration_micros.load(Ordering::Relaxed) as f64)
+                    / (write_cnt as f64)
+                    / 1000.0,
+            )
         } else {
             None
         };
@@ -253,7 +274,8 @@ impl RedisCache {
             let mut conn = conn_mgr.clone();
             drop(conn_opt);
 
-            let info_res: redis::RedisResult<String> = redis::cmd("INFO").query_async(&mut conn).await;
+            let info_res: redis::RedisResult<String> =
+                redis::cmd("INFO").query_async(&mut conn).await;
             if let Ok(info_str) = info_res {
                 is_connected = true;
                 for line in info_str.lines() {
@@ -275,7 +297,10 @@ impl RedisCache {
         let status_message = if is_connected {
             format!("Connected to Redis at {}", self.redis_url)
         } else {
-            format!("Redis unavailable at {} (transparent bypass active)", self.redis_url)
+            format!(
+                "Redis unavailable at {} (transparent bypass active)",
+                self.redis_url
+            )
         };
 
         CacheStatsSnapshot {

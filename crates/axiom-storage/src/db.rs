@@ -1,5 +1,5 @@
-use sqlx::postgres::{PgPool, PgPoolOptions};
 use axiom_core::Result;
+use sqlx::postgres::{PgPool, PgPoolOptions};
 
 #[derive(Clone)]
 pub struct Database {
@@ -13,7 +13,7 @@ impl Database {
             .connect(url)
             .await
             .map_err(crate::error::from_sqlx)?;
-        
+
         Ok(Self { pool })
     }
 

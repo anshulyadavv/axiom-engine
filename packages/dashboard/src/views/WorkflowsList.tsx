@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
-import { Layers, Plus, ArrowUpRight, X } from 'lucide-react';
+import { ArrowRight, X } from 'lucide-react';
 import { PageHeader, Button, SearchInput, EmptyState, Badge } from '../components/ui';
 
 export const WorkflowsList = () => {
@@ -49,9 +49,9 @@ export const WorkflowsList = () => {
       {/* Header */}
       <PageHeader
         title="Workflows"
-        description="Registered workflow definitions, version schemas, and entry points."
+        description="Registered workflow definitions and version schemas."
         actions={
-          <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => setShowModal(true)}>
+          <Button variant="primary" size="sm" onClick={() => setShowModal(true)}>
             Register Workflow
           </Button>
         }
@@ -72,26 +72,27 @@ export const WorkflowsList = () => {
       <div className="table-wrapper">
         <div className="table-header-bar">
           <div className="table-header-title">
-            <Layers size={16} style={{ color: 'var(--accent)' }} />
             <span>Workflow Definitions</span>
-            <Badge variant="neutral">{filteredWorkflows.length} total</Badge>
+            {filteredWorkflows.length > 0 && (
+              <Badge variant="neutral">{filteredWorkflows.length} workflows</Badge>
+            )}
           </div>
         </div>
 
         <div className="table-container">
           {isLoading ? (
             <div style={{ padding: '3.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-              Loading workflow registry...
+              Loading workflows...
             </div>
           ) : filteredWorkflows.length === 0 ? (
             <EmptyState
               title={search ? 'No matching workflows' : 'No workflows registered'}
-              description={search ? `No workflows matched "${search}". Try another query.` : 'Register a workflow definition to start dispatching durable runs.'}
+              description={search ? `No workflows matched "${search}".` : 'Register a workflow definition to start dispatching runs.'}
               action={
                 search ? (
                   <Button variant="secondary" size="sm" onClick={() => setSearch('')}>Clear Filter</Button>
                 ) : (
-                  <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => setShowModal(true)}>
+                  <Button variant="primary" size="sm" onClick={() => setShowModal(true)}>
                     Register First Workflow
                   </Button>
                 )
@@ -105,7 +106,7 @@ export const WorkflowsList = () => {
                   <th>ID</th>
                   <th>Version</th>
                   <th>Description</th>
-                  <th>Actions</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -120,14 +121,14 @@ export const WorkflowsList = () => {
                       {wf.id?.slice(0, 8)}...
                     </td>
                     <td className="tabular-nums">
-                      <Badge variant="primary">v{wf.version}</Badge>
+                      <Badge variant="neutral">v{wf.version}</Badge>
                     </td>
                     <td style={{ color: 'var(--text-secondary)', maxWidth: '300px' }}>
                       {wf.description || '—'}
                     </td>
-                    <td>
+                    <td style={{ textAlign: 'right' }}>
                       <Link to={`/workflows/${wf.id}`}>
-                        <Button variant="secondary" size="sm" icon={<ArrowUpRight size={12} />}>
+                        <Button variant="secondary" size="sm" iconRight={<ArrowRight size={12} className="link-arrow" />}>
                           View Details
                         </Button>
                       </Link>
@@ -177,7 +178,7 @@ export const WorkflowsList = () => {
               <div>
                 <label>Description (Optional)</label>
                 <textarea 
-                  placeholder="Operational purpose of this workflow..." 
+                  placeholder="Description of this workflow..." 
                   value={description} 
                   onChange={e => setDescription(e.target.value)} 
                   rows={3} 

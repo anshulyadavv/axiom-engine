@@ -1,7 +1,7 @@
-use async_trait::async_trait;
-use axiom_core::Result;
 use crate::traits::AuditRepository;
 use crate::Database;
+use async_trait::async_trait;
+use axiom_core::Result;
 
 #[async_trait]
 impl AuditRepository for Database {

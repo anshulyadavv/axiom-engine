@@ -4,14 +4,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
 import { api, type UserInfo } from '../api';
 import { 
-  LockClosedIcon, 
-  PersonIcon, 
-  ExitIcon, 
   Cross2Icon, 
-  CheckCircledIcon, 
-  ExclamationTriangleIcon,
   ReloadIcon 
 } from '@radix-ui/react-icons';
+import { Badge } from './ui/Badge';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -72,7 +68,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const bootstrapMutation = useMutation({
     mutationFn: () => api.bootstrapAdmin(email, password, bootstrapSecret || undefined),
     onSuccess: () => {
-      setSuccessMsg('Administrator account initialized and authenticated!');
+      setSuccessMsg('Administrator account initialized and authenticated.');
       setErrorMsg(null);
       refetchUser();
       queryClient.invalidateQueries();
@@ -125,25 +121,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           >
             {/* Header */}
             <div className="modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  width: '32px', 
-                  height: '32px', 
-                  borderRadius: '8px', 
-                  backgroundColor: 'var(--accent-muted)' 
-                }}>
-                  <LockClosedIcon width={18} height={18} color="var(--accent)" />
+              <div>
+                <div style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  {user ? 'Account Session' : isBootstrap ? 'Bootstrap First Admin' : 'Sign in'}
                 </div>
-                <div>
-                  <div style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--text-primary)' }}>
-                    {user ? 'Account Session' : isBootstrap ? 'Bootstrap First Admin' : 'Sign In to Axiom'}
-                  </div>
-                  <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', fontWeight: 400 }}>
-                    {user ? 'Authenticated control plane' : isBootstrap ? 'Create the primary admin account' : 'Production workflow orchestration'}
-                  </div>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', fontWeight: 400 }}>
+                  {user ? 'Control plane session' : isBootstrap ? 'Create the primary admin account' : 'Authentication required'}
                 </div>
               </div>
               <button 
@@ -163,33 +146,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   <div style={{ 
                     background: 'var(--bg-tertiary)', 
                     border: '1px solid var(--border-subtle)', 
-                    borderRadius: '10px', 
+                    borderRadius: '6px', 
                     padding: '1.25rem', 
                     marginBottom: '1.5rem' 
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                      <div style={{ 
-                        width: '36px', 
-                        height: '36px', 
-                        borderRadius: '50%', 
-                        background: 'var(--accent)', 
-                        color: '#fff', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center',
-                        fontWeight: 600,
-                        fontSize: '14px'
-                      }}>
-                        {user.email.charAt(0).toUpperCase()}
-                      </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 600, color: 'var(--text-primary)', wordBreak: 'break-all', fontSize: 'var(--text-sm)' }}>
                           {user.email}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '2px' }}>
-                          <span className={`badge ${user.role === 'admin' ? 'badge-primary' : 'badge-secondary'}`} style={{ fontSize: '9px', padding: '1px 6px' }}>
-                            {user.role.toUpperCase()}
-                          </span>
+                          <Badge variant="neutral" withDot={false} style={{ fontSize: '10px', padding: '1px 5px' }}>
+                            {user.role}
+                          </Badge>
                           <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}>
                             Tenant: {user.tenant_id.slice(0, 8)}...
                           </span>
@@ -204,7 +173,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                       paddingTop: '0.75rem',
                       lineHeight: '1.4'
                     }}>
-                      Protected with Argon2id password hashing, HttpOnly session cookie, and CSRF token verification.
+                      Argon2id password hashing, HttpOnly session cookie, and CSRF token verification.
                     </div>
                   </div>
 
@@ -212,55 +181,47 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     className="btn btn-secondary"
                     style={{ 
                       width: '100%', 
-                      height: '40px', 
+                      height: '36px', 
                       display: 'flex', 
                       alignItems: 'center', 
                       justifyContent: 'center', 
                       gap: '0.5rem', 
-                      color: 'var(--error)' 
+                      color: 'var(--status-error)' 
                     }}
                     onClick={() => logoutMutation.mutate()}
                     disabled={isPending}
                   >
-                    {logoutMutation.isPending ? <ReloadIcon className="animate-spin" width={14} height={14} /> : <ExitIcon width={14} height={14} />}
-                    <span>Sign Out</span>
+                    {logoutMutation.isPending && <ReloadIcon className="animate-spin" width={14} height={14} />}
+                    <span>Sign out</span>
                   </button>
                 </div>
               ) : (
                 <div>
                   {errorMsg && (
                     <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'flex-start', 
-                      gap: '0.5rem', 
                       padding: '0.75rem 1rem', 
-                      background: 'rgba(239, 68, 68, 0.1)', 
-                      border: '1px solid var(--error-border)', 
-                      borderRadius: '8px', 
-                      color: 'var(--error)', 
+                      background: 'var(--status-error-bg)', 
+                      border: '1px solid var(--status-error-border)', 
+                      borderRadius: '6px', 
+                      color: 'var(--status-error)', 
                       fontSize: 'var(--text-xs)', 
                       marginBottom: '1.25rem' 
                     }}>
-                      <ExclamationTriangleIcon width={16} height={16} style={{ flexShrink: 0, marginTop: '2px' }} />
-                      <div style={{ flex: 1 }}>{errorMsg}</div>
+                      {errorMsg}
                     </div>
                   )}
 
                   {successMsg && (
                     <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '0.5rem', 
                       padding: '0.75rem 1rem', 
-                      background: 'rgba(34, 197, 94, 0.1)', 
-                      border: '1px solid var(--success-border)', 
-                      borderRadius: '8px', 
-                      color: 'var(--success)', 
+                      background: 'var(--status-success-bg)', 
+                      border: '1px solid var(--status-success-border)', 
+                      borderRadius: '6px', 
+                      color: 'var(--status-success)', 
                       fontSize: 'var(--text-xs)', 
                       marginBottom: '1.25rem' 
                     }}>
-                      <CheckCircledIcon width={16} height={16} style={{ flexShrink: 0 }} />
-                      <div style={{ flex: 1 }}>{successMsg}</div>
+                      {successMsg}
                     </div>
                   )}
 
@@ -315,7 +276,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                       className="btn btn-primary"
                       style={{ 
                         width: '100%', 
-                        height: '42px', 
+                        height: '38px', 
                         fontSize: 'var(--text-sm)', 
                         fontWeight: 600,
                         display: 'flex',
@@ -327,7 +288,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                     >
                       {isPending ? (
                         <>
-                          <ReloadIcon className="animate-spin" width={16} height={16} />
+                          <ReloadIcon className="animate-spin" width={14} height={14} />
                           <span>{isBootstrap ? 'Initializing...' : 'Signing In...'}</span>
                         </>
                       ) : (

@@ -80,7 +80,9 @@ struct ApiClient {
 
 impl ApiClient {
     fn new(base_url: Option<String>, api_key: Option<String>) -> anyhow::Result<Self> {
-        let base_url = base_url.unwrap_or_else(|| env::var("AXIOM_API_URL").unwrap_or_else(|_| "http://localhost:8000".to_string()));
+        let base_url = base_url.unwrap_or_else(|| {
+            env::var("AXIOM_API_URL").unwrap_or_else(|_| "http://localhost:8000".to_string())
+        });
         let api_key = api_key.unwrap_or_else(|| env::var("AXIOM_API_KEY").unwrap_or_default());
 
         let mut headers = HeaderMap::new();
@@ -105,7 +107,15 @@ impl ApiClient {
             Ok(body)
         } else {
             let msg = if let Some(err) = body.get("error") {
-                format!("{}: {}", err.get("code").and_then(|v| v.as_str()).unwrap_or("UNKNOWN"), err.get("message").and_then(|v| v.as_str()).unwrap_or("Unknown error"))
+                format!(
+                    "{}: {}",
+                    err.get("code")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("UNKNOWN"),
+                    err.get("message")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("Unknown error")
+                )
             } else {
                 format!("HTTP {}", status)
             };
@@ -114,20 +124,36 @@ impl ApiClient {
     }
 
     async fn get(&self, path: &str) -> anyhow::Result<Value> {
-        let res = self.client.get(&format!("{}{}", self.base_url, path)).send().await?;
+        let res = self
+            .client
+            .get(&format!("{}{}", self.base_url, path))
+            .send()
+            .await?;
         self.handle_response(res).await
     }
 
     async fn post(&self, path: &str, body: &Value) -> anyhow::Result<Value> {
-        let res = self.client.post(&format!("{}{}", self.base_url, path)).json(body).send().await?;
+        let res = self
+            .client
+            .post(&format!("{}{}", self.base_url, path))
+            .json(body)
+            .send()
+            .await?;
         self.handle_response(res).await
     }
 }
 
-async fn find_workflow_by_name(api: &ApiClient, name: &str, exact_version: Option<i32>) -> anyhow::Result<Value> {
+async fn find_workflow_by_name(
+    api: &ApiClient,
+    name: &str,
+    exact_version: Option<i32>,
+) -> anyhow::Result<Value> {
     let res = api.get(&format!("/v1/workflows?name={}", name)).await?;
-    let data = res.get("data").and_then(|v| v.as_array()).ok_or_else(|| anyhow::anyhow!("Invalid response"))?;
-    
+    let data = res
+        .get("data")
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| anyhow::anyhow!("Invalid response"))?;
+
     let mut matches: Vec<Value> = data.iter().cloned().collect();
     if let Some(v) = exact_version {
         matches.retain(|w| w.get("version").and_then(|val| val.as_i64()) == Some(v as i64));
@@ -174,7 +200,10 @@ async fn main() -> anyhow::Result<()> {
                             table.add_row(vec![
                                 row.get("id").and_then(|v| v.as_str()).unwrap_or(""),
                                 row.get("name").and_then(|v| v.as_str()).unwrap_or(""),
-                                &row.get("version").and_then(|v| v.as_i64()).unwrap_or(0).to_string(),
+                                &row.get("version")
+                                    .and_then(|v| v.as_i64())
+                                    .unwrap_or(0)
+                                    .to_string(),
                                 row.get("status").and_then(|v| v.as_str()).unwrap_or(""),
                                 row.get("created_at").and_then(|v| v.as_str()).unwrap_or(""),
                             ]);
@@ -183,12 +212,19 @@ async fn main() -> anyhow::Result<()> {
                     }
                 }
             }
-            WorkflowCommands::Run { name, version, input } => {
+            WorkflowCommands::Run {
+                name,
+                version,
+                input,
+            } => {
                 let wf = find_workflow_by_name(&api, &name, Some(version)).await?;
                 let wf_id = wf.get("id").and_then(|v| v.as_str()).unwrap();
-                
+
                 let input_json: Option<Value> = if let Some(i) = input {
-                    Some(serde_json::from_str(&i).map_err(|_| anyhow::anyhow!("Invalid JSON input"))?)
+                    Some(
+                        serde_json::from_str(&i)
+                            .map_err(|_| anyhow::anyhow!("Invalid JSON input"))?,
+                    )
                 } else {
                     None
                 };
@@ -197,41 +233,90 @@ async fn main() -> anyhow::Result<()> {
                     "input": input_json
                 });
 
-                let res = api.post(&format!("/v1/workflows/{}/runs", wf_id), &body).await?;
-                
+                let res = api
+                    .post(&format!("/v1/workflows/{}/runs", wf_id), &body)
+                    .await?;
+
                 if cli.json {
                     println!("{}", serde_json::to_string_pretty(&res)?);
                 } else {
                     let data = res.get("data").unwrap();
                     println!("Successfully started workflow run!");
-                    println!("Run ID:          {}", data.get("id").and_then(|v| v.as_str()).unwrap_or(""));
+                    println!(
+                        "Run ID:          {}",
+                        data.get("id").and_then(|v| v.as_str()).unwrap_or("")
+                    );
                     println!("Workflow Name:   {}", name);
-                    println!("Bound Version:   {}", data.get("workflow_version").and_then(|v| v.as_i64()).unwrap_or(0));
-                    println!("Status:          {}", data.get("status").and_then(|v| v.as_str()).unwrap_or(""));
+                    println!(
+                        "Bound Version:   {}",
+                        data.get("workflow_version")
+                            .and_then(|v| v.as_i64())
+                            .unwrap_or(0)
+                    );
+                    println!(
+                        "Status:          {}",
+                        data.get("status").and_then(|v| v.as_str()).unwrap_or("")
+                    );
                 }
             }
             WorkflowCommands::Inspect { name } => {
                 let wf = find_workflow_by_name(&api, &name, None).await?;
                 let wf_id = wf.get("id").and_then(|v| v.as_str()).unwrap();
                 let res = api.get(&format!("/v1/workflows/{}", wf_id)).await?;
-                
+
                 if cli.json {
                     println!("{}", serde_json::to_string_pretty(&res)?);
                 } else {
                     let data = res.get("data").unwrap();
                     println!("Workflow Inspect");
                     println!("----------------");
-                    println!("ID:           {}", data.get("id").and_then(|v| v.as_str()).unwrap_or(""));
-                    println!("Name:         {}", data.get("name").and_then(|v| v.as_str()).unwrap_or(""));
-                    println!("Version:      {}", data.get("version").and_then(|v| v.as_i64()).unwrap_or(0));
-                    println!("Status:       {}", data.get("status").and_then(|v| v.as_str()).unwrap_or(""));
-                    println!("Created At:   {}", data.get("created_at").and_then(|v| v.as_str()).unwrap_or(""));
-                    
+                    println!(
+                        "ID:           {}",
+                        data.get("id").and_then(|v| v.as_str()).unwrap_or("")
+                    );
+                    println!(
+                        "Name:         {}",
+                        data.get("name").and_then(|v| v.as_str()).unwrap_or("")
+                    );
+                    println!(
+                        "Version:      {}",
+                        data.get("version").and_then(|v| v.as_i64()).unwrap_or(0)
+                    );
+                    println!(
+                        "Status:       {}",
+                        data.get("status").and_then(|v| v.as_str()).unwrap_or("")
+                    );
+                    println!(
+                        "Created At:   {}",
+                        data.get("created_at")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                    );
+
                     if let Some(stats) = data.get("stats") {
                         println!("\nAnalytics:");
-                        println!("Total Runs:   {}", stats.get("total_runs").and_then(|v| v.as_i64()).unwrap_or(0));
-                        println!("Active Runs:  {}", stats.get("active_runs").and_then(|v| v.as_i64()).unwrap_or(0));
-                        println!("Success Rate: {:.2}%", stats.get("success_rate").and_then(|v| v.as_f64()).unwrap_or(0.0) * 100.0);
+                        println!(
+                            "Total Runs:   {}",
+                            stats
+                                .get("total_runs")
+                                .and_then(|v| v.as_i64())
+                                .unwrap_or(0)
+                        );
+                        println!(
+                            "Active Runs:  {}",
+                            stats
+                                .get("active_runs")
+                                .and_then(|v| v.as_i64())
+                                .unwrap_or(0)
+                        );
+                        println!(
+                            "Success Rate: {:.2}%",
+                            stats
+                                .get("success_rate")
+                                .and_then(|v| v.as_f64())
+                                .unwrap_or(0.0)
+                                * 100.0
+                        );
                     }
                 }
             }
@@ -245,17 +330,41 @@ async fn main() -> anyhow::Result<()> {
                     let data = res.get("data").unwrap();
                     println!("Run Inspect");
                     println!("-----------");
-                    println!("Run ID:           {}", data.get("id").and_then(|v| v.as_str()).unwrap_or(""));
-                    println!("Workflow Name:    {}", data.get("workflow_name").and_then(|v| v.as_str()).unwrap_or(""));
-                    println!("Workflow Version: {}", data.get("workflow_version").and_then(|v| v.as_i64()).unwrap_or(0));
-                    println!("Status:           {}", data.get("status").and_then(|v| v.as_str()).unwrap_or(""));
-                    println!("Created At:       {}", data.get("created_at").and_then(|v| v.as_str()).unwrap_or(""));
+                    println!(
+                        "Run ID:           {}",
+                        data.get("id").and_then(|v| v.as_str()).unwrap_or("")
+                    );
+                    println!(
+                        "Workflow Name:    {}",
+                        data.get("workflow_name")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                    );
+                    println!(
+                        "Workflow Version: {}",
+                        data.get("workflow_version")
+                            .and_then(|v| v.as_i64())
+                            .unwrap_or(0)
+                    );
+                    println!(
+                        "Status:           {}",
+                        data.get("status").and_then(|v| v.as_str()).unwrap_or("")
+                    );
+                    println!(
+                        "Created At:       {}",
+                        data.get("created_at")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                    );
                     if let Some(err) = data.get("error") {
                         if !err.is_null() {
-                            println!("Error:            {}", serde_json::to_string(err).unwrap_or_default());
+                            println!(
+                                "Error:            {}",
+                                serde_json::to_string(err).unwrap_or_default()
+                            );
                         }
                     }
-                    
+
                     if let Some(steps) = data.get("steps").and_then(|v| v.as_array()) {
                         if !steps.is_empty() {
                             println!("\nSteps:");
@@ -264,9 +373,17 @@ async fn main() -> anyhow::Result<()> {
                             for step in steps {
                                 table.add_row(vec![
                                     step.get("step_id").and_then(|v| v.as_str()).unwrap_or(""),
-                                    &step.get("attempt").and_then(|v| v.as_i64()).unwrap_or(0).to_string(),
+                                    &step
+                                        .get("attempt")
+                                        .and_then(|v| v.as_i64())
+                                        .unwrap_or(0)
+                                        .to_string(),
                                     step.get("status").and_then(|v| v.as_str()).unwrap_or(""),
-                                    &step.get("duration_ms").and_then(|v| v.as_i64()).unwrap_or(0).to_string(),
+                                    &step
+                                        .get("duration_ms")
+                                        .and_then(|v| v.as_i64())
+                                        .unwrap_or(0)
+                                        .to_string(),
                                 ]);
                             }
                             println!("{table}");
@@ -282,7 +399,10 @@ async fn main() -> anyhow::Result<()> {
                 } else {
                     let data = res.get("data").unwrap();
                     println!("Run {} cancelled successfully.", id);
-                    println!("New Status: {}", data.get("status").and_then(|v| v.as_str()).unwrap_or(""));
+                    println!(
+                        "New Status: {}",
+                        data.get("status").and_then(|v| v.as_str()).unwrap_or("")
+                    );
                 }
             }
         },
@@ -292,10 +412,12 @@ async fn main() -> anyhow::Result<()> {
             } else {
                 println!("Error: Logs feature is not supported by the backend API yet.");
             }
-        },
+        }
         Commands::Workers => {
             if cli.json {
-                println!(r#"{{"error":"Worker discovery/status is not exposed by the backend API yet."}}"#);
+                println!(
+                    r#"{{"error":"Worker discovery/status is not exposed by the backend API yet."}}"#
+                );
             } else {
                 println!("Error: Worker discovery/status is not exposed by the backend API yet.");
             }
@@ -308,14 +430,14 @@ async fn main() -> anyhow::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use wiremock::matchers::{method, path, query_param, header};
-    use wiremock::{Mock, MockServer, ResponseTemplate};
     use serde_json::json;
+    use wiremock::matchers::{header, method, path, query_param};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
 
     #[tokio::test]
     async fn test_api_client_auth_header() {
         let mock_server = MockServer::start().await;
-        
+
         Mock::given(method("GET"))
             .and(path("/v1/workflows"))
             .and(header("Authorization", "Bearer test-secret-key"))
@@ -323,10 +445,8 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let api = ApiClient::new(
-            Some(mock_server.uri()),
-            Some("test-secret-key".to_string()),
-        ).unwrap();
+        let api =
+            ApiClient::new(Some(mock_server.uri()), Some("test-secret-key".to_string())).unwrap();
 
         let res = api.get("/v1/workflows").await.unwrap();
         assert_eq!(res.get("data").unwrap().as_array().unwrap().len(), 0);
@@ -335,7 +455,7 @@ mod tests {
     #[tokio::test]
     async fn test_non_2xx_error_parsing() {
         let mock_server = MockServer::start().await;
-        
+
         Mock::given(method("GET"))
             .and(path("/v1/workflows"))
             .respond_with(ResponseTemplate::new(403).set_body_json(json!({
@@ -350,13 +470,16 @@ mod tests {
         let api = ApiClient::new(Some(mock_server.uri()), None).unwrap();
 
         let err = api.get("/v1/workflows").await.unwrap_err();
-        assert_eq!(err.to_string(), "API Request Failed: FORBIDDEN: Invalid API key");
+        assert_eq!(
+            err.to_string(),
+            "API Request Failed: FORBIDDEN: Invalid API key"
+        );
     }
 
     #[tokio::test]
     async fn test_find_workflow_by_name_exact_version() {
         let mock_server = MockServer::start().await;
-        
+
         Mock::given(method("GET"))
             .and(path("/v1/workflows"))
             .and(query_param("name", "test-flow"))
@@ -371,14 +494,16 @@ mod tests {
 
         let api = ApiClient::new(Some(mock_server.uri()), None).unwrap();
 
-        let wf = find_workflow_by_name(&api, "test-flow", Some(1)).await.unwrap();
+        let wf = find_workflow_by_name(&api, "test-flow", Some(1))
+            .await
+            .unwrap();
         assert_eq!(wf.get("id").unwrap().as_str().unwrap(), "uuid-1");
     }
 
     #[tokio::test]
     async fn test_find_workflow_by_name_latest_version() {
         let mock_server = MockServer::start().await;
-        
+
         Mock::given(method("GET"))
             .and(path("/v1/workflows"))
             .and(query_param("name", "test-flow"))
@@ -393,7 +518,9 @@ mod tests {
 
         let api = ApiClient::new(Some(mock_server.uri()), None).unwrap();
 
-        let wf = find_workflow_by_name(&api, "test-flow", None).await.unwrap();
+        let wf = find_workflow_by_name(&api, "test-flow", None)
+            .await
+            .unwrap();
         assert_eq!(wf.get("id").unwrap().as_str().unwrap(), "uuid-2");
     }
 }

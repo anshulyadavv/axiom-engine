@@ -1,11 +1,8 @@
-use axum::{extract::State, Json};
 use crate::{
-    server::AppState,
-    error::ApiError,
-    handlers::workflows::ApiData,
-    cache::CacheStatsSnapshot,
-    auth::AuthenticatedUser,
+    auth::AuthenticatedUser, cache::CacheStatsSnapshot, error::ApiError,
+    handlers::workflows::ApiData, server::AppState,
 };
+use axum::{extract::State, Json};
 
 pub async fn get_cache_telemetry(
     _user: AuthenticatedUser,

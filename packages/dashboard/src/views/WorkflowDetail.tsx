@@ -3,8 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../api';
 import { formatDistanceToNow } from 'date-fns';
-import { Layers, Play, Clock, ArrowLeft, ArrowUpRight, X, AlertCircle } from 'lucide-react';
-import { Button, Badge, EmptyState } from '../components/ui';
+import { ArrowLeft, ArrowRight, X } from 'lucide-react';
+import { Button, Badge, EmptyState, type BadgeVariant } from '../components/ui';
 
 export const WorkflowDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -46,7 +46,7 @@ export const WorkflowDetail = () => {
       }
       return api.startRun(id!, parsed);
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['runs'] });
       queryClient.invalidateQueries({ queryKey: ['overview'] });
       setShowModal(false);
@@ -56,6 +56,16 @@ export const WorkflowDetail = () => {
       setErrorMsg(err.message);
     }
   });
+
+  const getStatusDetails = (status: string): { variant: BadgeVariant; label: string } => {
+    switch (status) {
+      case 'completed': return { variant: 'success', label: 'Completed' };
+      case 'failed': return { variant: 'error', label: 'Failed' };
+      case 'cancelled': return { variant: 'warning', label: 'Cancelled' };
+      case 'running': return { variant: 'info', label: 'Running' };
+      default: return { variant: 'neutral', label: status.charAt(0).toUpperCase() + status.slice(1) };
+    }
+  };
 
   if (wfLoading || !wf) {
     return (
@@ -72,8 +82,8 @@ export const WorkflowDetail = () => {
       {/* Back button */}
       <div style={{ marginBottom: '1rem' }}>
         <Link to="/workflows">
-          <Button variant="ghost" size="sm" icon={<ArrowLeft size={14} />}>
-            Back to Workflows
+          <Button variant="ghost" size="sm" icon={<ArrowLeft size={13} className="back-arrow" />}>
+            Back to workflows
           </Button>
         </Link>
       </div>
@@ -83,16 +93,15 @@ export const WorkflowDetail = () => {
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginBottom: '0.375rem' }}>
-              <Layers size={20} style={{ color: 'var(--accent)' }} />
               <h1 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 600 }}>{wf.name}</h1>
-              <Badge variant="primary">v{wf.version}</Badge>
+              <Badge variant="neutral">v{wf.version}</Badge>
             </div>
             <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
               {wf.description || 'No description provided.'}
             </p>
           </div>
 
-          <Button variant="primary" size="sm" icon={<Play size={14} />} onClick={() => setShowModal(true)}>
+          <Button variant="primary" size="sm" onClick={() => setShowModal(true)}>
             Start Execution
           </Button>
         </div>
@@ -102,9 +111,10 @@ export const WorkflowDetail = () => {
       <div className="table-wrapper">
         <div className="table-header-bar">
           <div className="table-header-title">
-            <Clock size={16} style={{ color: 'var(--accent)' }} />
-            <span>Executions of this Workflow</span>
-            <Badge variant="neutral">{wfRuns.length} runs</Badge>
+            <span>Executions</span>
+            {wfRuns.length > 0 && (
+              <Badge variant="neutral">{wfRuns.length} runs</Badge>
+            )}
           </div>
         </div>
 
@@ -114,7 +124,7 @@ export const WorkflowDetail = () => {
               title="No executions recorded"
               description="This workflow has not been executed yet. Click Start Execution to trigger a run."
               action={
-                <Button variant="primary" size="sm" icon={<Play size={14} />} onClick={() => setShowModal(true)}>
+                <Button variant="primary" size="sm" onClick={() => setShowModal(true)}>
                   Start Execution
                 </Button>
               }
@@ -125,19 +135,15 @@ export const WorkflowDetail = () => {
                 <tr>
                   <th>Run ID</th>
                   <th>Status</th>
-                  <th>Duration</th>
-                  <th>Attempts</th>
+                  <th style={{ textAlign: 'right' }}>Duration</th>
+                  <th style={{ textAlign: 'right' }}>Attempts</th>
                   <th>Started</th>
-                  <th>Action</th>
+                  <th style={{ textAlign: 'right' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {wfRuns.map((run: any) => {
-                  let badgeType = 'badge-info';
-                  if (run.status === 'completed') badgeType = 'badge-success';
-                  if (run.status === 'failed') badgeType = 'badge-error';
-                  if (run.status === 'cancelled') badgeType = 'badge-warning';
-
+                  const statusInfo = getStatusDetails(run.status);
                   const duration = run.completed_at && (run.started_at || run.created_at)
                     ? new Date(run.completed_at).getTime() - new Date(run.started_at || run.created_at).getTime()
                     : null;
@@ -150,15 +156,14 @@ export const WorkflowDetail = () => {
                         </Link>
                       </td>
                       <td>
-                        <span className={`badge ${badgeType}`}>
-                          <span className="badge-dot" />
-                          {run.status}
-                        </span>
+                        <Badge variant={statusInfo.variant}>
+                          {statusInfo.label}
+                        </Badge>
                       </td>
-                      <td className="tabular-nums" style={{ color: 'var(--text-secondary)' }}>
+                      <td className="tabular-nums" style={{ textAlign: 'right', color: 'var(--text-secondary)' }}>
                         {duration != null ? `${duration}ms` : '—'}
                       </td>
-                      <td className="tabular-nums" style={{ color: 'var(--text-secondary)' }}>
+                      <td className="tabular-nums" style={{ textAlign: 'right', color: 'var(--text-secondary)' }}>
                         {run.attempts ?? 1}
                       </td>
                       <td className="tabular-nums" style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
@@ -166,9 +171,9 @@ export const WorkflowDetail = () => {
                           ? formatDistanceToNow(new Date(run.started_at || run.created_at), { addSuffix: true }) 
                           : '—'}
                       </td>
-                      <td>
+                      <td style={{ textAlign: 'right' }}>
                         <Link to={`/runs/${run.id}`} className="btn btn-sm btn-ghost" style={{ gap: '0.25rem' }}>
-                          Inspect <ArrowUpRight size={12} />
+                          Inspect <ArrowRight size={12} className="link-arrow" />
                         </Link>
                       </td>
                     </tr>
@@ -197,8 +202,8 @@ export const WorkflowDetail = () => {
             </div>
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {errorMsg && (
-                <div style={{ padding: '0.625rem', backgroundColor: 'var(--status-error-bg)', border: '1px solid var(--status-error-border)', borderRadius: 'var(--radius-sm)', color: 'var(--status-error)', fontSize: 'var(--font-size-xs)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <AlertCircle size={14} /> {errorMsg}
+                <div style={{ padding: '0.625rem', backgroundColor: 'var(--status-error-bg)', border: '1px solid var(--status-error-border)', borderRadius: 'var(--radius-sm)', color: 'var(--status-error)', fontSize: 'var(--font-size-xs)' }}>
+                  {errorMsg}
                 </div>
               )}
               <div>
@@ -220,7 +225,6 @@ export const WorkflowDetail = () => {
                 variant="primary" 
                 onClick={() => startRunMutation.mutate()} 
                 isLoading={startRunMutation.isPending}
-                icon={<Play size={14} />}
               >
                 Submit Run
               </Button>

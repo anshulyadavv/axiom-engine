@@ -1,10 +1,10 @@
-pub mod health;
-pub mod workflows;
-pub mod runs;
-pub mod workers;
 pub mod api_keys;
-pub mod search;
 pub mod auth;
 pub mod events;
+pub mod health;
+pub mod runs;
+pub mod search;
 pub mod telemetry;
+pub mod workers;
+pub mod workflows;
 pub mod workload;

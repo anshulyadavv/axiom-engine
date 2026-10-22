@@ -1,17 +1,22 @@
+use crate::{models::StepExecutionRow, traits::StepRepository, Database};
 use async_trait::async_trait;
-use axiom_core::{FenceToken, RunId, Result, AxiomError};
-use crate::{Database, models::StepExecutionRow, traits::StepRepository};
+use axiom_core::{AxiomError, FenceToken, Result, RunId};
 
 #[async_trait]
 impl StepRepository for Database {
-    async fn get_step_execution(&self, run_id: RunId, step_id: &str, attempt: i32) -> Result<Option<StepExecutionRow>> {
+    async fn get_step_execution(
+        &self,
+        run_id: RunId,
+        step_id: &str,
+        attempt: i32,
+    ) -> Result<Option<StepExecutionRow>> {
         let row = sqlx::query_as::<_, StepExecutionRow>(
             r#"
             SELECT id, run_id, tenant_id, step_id, attempt, max_attempts, status, next_retry_at, 
                    input, output, error, operation_id, started_at, completed_at, duration_ms
             FROM step_executions 
             WHERE run_id = $1 AND step_id = $2 AND attempt = $3
-            "#
+            "#,
         )
         .bind(run_id)
         .bind(step_id)
@@ -31,7 +36,7 @@ impl StepRepository for Database {
             FROM step_executions 
             WHERE run_id = $1
             ORDER BY started_at ASC NULLS LAST
-            "#
+            "#,
         )
         .bind(run_id)
         .fetch_all(&self.pool)
@@ -41,31 +46,37 @@ impl StepRepository for Database {
         Ok(rows)
     }
 
-    async fn upsert_step_execution(&self, run_id: RunId, fence_token: FenceToken, step: StepExecutionRow) -> Result<StepExecutionRow> {
+    async fn upsert_step_execution(
+        &self,
+        run_id: RunId,
+        fence_token: FenceToken,
+        step: StepExecutionRow,
+    ) -> Result<StepExecutionRow> {
         let mut tx = self.pool.begin().await.map_err(crate::error::from_sqlx)?;
 
         // 1. Verify the fence token with a locking read
-        let current_token: Option<i64> = sqlx::query_scalar(
-            "SELECT fence_token FROM workflow_runs WHERE id = $1 FOR UPDATE"
-        )
-        .bind(run_id)
-        .fetch_optional(&mut *tx)
-        .await
-        .map_err(crate::error::from_sqlx)?;
+        let current_token: Option<i64> =
+            sqlx::query_scalar("SELECT fence_token FROM workflow_runs WHERE id = $1 FOR UPDATE")
+                .bind(run_id)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(crate::error::from_sqlx)?;
 
         match current_token {
             Some(t) if t == fence_token.0 => {
                 // Token matches, proceed
             }
             Some(_) => {
-                return Err(AxiomError::DeterminismViolation(
-                    format!("Fence token mismatch for run {}", run_id.0)
-                ));
+                return Err(AxiomError::DeterminismViolation(format!(
+                    "Fence token mismatch for run {}",
+                    run_id.0
+                )));
             }
             None => {
-                return Err(AxiomError::NotFound(
-                    format!("Workflow run {} not found", run_id.0)
-                ));
+                return Err(AxiomError::NotFound(format!(
+                    "Workflow run {} not found",
+                    run_id.0
+                )));
             }
         }
 
@@ -87,7 +98,7 @@ impl StepRepository for Database {
                 duration_ms = EXCLUDED.duration_ms
             RETURNING id, run_id, tenant_id, step_id, attempt, max_attempts, status, next_retry_at, 
                       input, output, error, operation_id, started_at, completed_at, duration_ms
-            "#
+            "#,
         )
         .bind(step.id)
         .bind(step.run_id)
@@ -118,29 +129,30 @@ impl StepRepository for Database {
         run_id: RunId,
         fence_token: FenceToken,
         step: StepExecutionRow,
-        outbox: crate::models::OutboxMessageRow
+        outbox: crate::models::OutboxMessageRow,
     ) -> Result<()> {
         let mut tx = self.pool.begin().await.map_err(crate::error::from_sqlx)?;
 
-        let current_token: Option<i64> = sqlx::query_scalar(
-            "SELECT fence_token FROM workflow_runs WHERE id = $1 FOR UPDATE"
-        )
-        .bind(run_id)
-        .fetch_optional(&mut *tx)
-        .await
-        .map_err(crate::error::from_sqlx)?;
+        let current_token: Option<i64> =
+            sqlx::query_scalar("SELECT fence_token FROM workflow_runs WHERE id = $1 FOR UPDATE")
+                .bind(run_id)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(crate::error::from_sqlx)?;
 
         match current_token {
             Some(t) if t == fence_token.0 => {}
             Some(_) => {
-                return Err(AxiomError::DeterminismViolation(
-                    format!("Fence token mismatch for run {}", run_id.0)
-                ));
+                return Err(AxiomError::DeterminismViolation(format!(
+                    "Fence token mismatch for run {}",
+                    run_id.0
+                )));
             }
             None => {
-                return Err(AxiomError::NotFound(
-                    format!("Workflow run {} not found", run_id.0)
-                ));
+                return Err(AxiomError::NotFound(format!(
+                    "Workflow run {} not found",
+                    run_id.0
+                )));
             }
         }
 
@@ -159,7 +171,7 @@ impl StepRepository for Database {
                 started_at = EXCLUDED.started_at,
                 completed_at = EXCLUDED.completed_at,
                 duration_ms = EXCLUDED.duration_ms
-            "#
+            "#,
         )
         .bind(step.id)
         .bind(step.run_id)

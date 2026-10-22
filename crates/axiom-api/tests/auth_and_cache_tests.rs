@@ -1,9 +1,9 @@
+use axiom_api::auth::UserRole;
+use axiom_api::cache::RedisCache;
 use axiom_api::crypto::{
     decrypt_aes_gcm, encrypt_aes_gcm, generate_secure_token, hash_password, hash_token,
     resolve_master_key, verify_password,
 };
-use axiom_api::auth::UserRole;
-use axiom_api::cache::RedisCache;
 use axiom_api::telemetry::{EventCategory, OperationalEvent, TelemetryHub};
 use chrono::Utc;
 use uuid::Uuid;
@@ -19,12 +19,24 @@ fn test_argon2id_password_hashing_and_verification() {
     assert!(hash2.starts_with("$argon2id$"), "Hash should use Argon2id");
 
     // Salt must be unique per hash
-    assert_ne!(hash1, hash2, "Two hashes of same password must differ due to unique salts");
+    assert_ne!(
+        hash1, hash2,
+        "Two hashes of same password must differ due to unique salts"
+    );
 
     // Verification
-    assert!(verify_password(password, &hash1).is_ok(), "Correct password must verify");
-    assert!(verify_password(password, &hash2).is_ok(), "Correct password must verify");
-    assert!(verify_password("wrong_password", &hash1).is_err(), "Wrong password must be rejected");
+    assert!(
+        verify_password(password, &hash1).is_ok(),
+        "Correct password must verify"
+    );
+    assert!(
+        verify_password(password, &hash2).is_ok(),
+        "Correct password must verify"
+    );
+    assert!(
+        verify_password("wrong_password", &hash1).is_err(),
+        "Wrong password must be rejected"
+    );
 }
 
 #[test]
@@ -32,8 +44,10 @@ fn test_aes_256_gcm_authenticated_encryption() {
     let master_key = resolve_master_key();
     let secret_payload = b"sk-provider-secret-ai-model-key-xyz123";
 
-    let (ciphertext1, nonce1) = encrypt_aes_gcm(secret_payload, &master_key).expect("Encryption 1 succeeds");
-    let (ciphertext2, nonce2) = encrypt_aes_gcm(secret_payload, &master_key).expect("Encryption 2 succeeds");
+    let (ciphertext1, nonce1) =
+        encrypt_aes_gcm(secret_payload, &master_key).expect("Encryption 1 succeeds");
+    let (ciphertext2, nonce2) =
+        encrypt_aes_gcm(secret_payload, &master_key).expect("Encryption 2 succeeds");
 
     // Unique nonces
     assert_ne!(nonce1, nonce2, "Nonces must be unique per encryption");
@@ -44,18 +58,25 @@ fn test_aes_256_gcm_authenticated_encryption() {
     assert_ne!(ciphertext1, ciphertext2);
 
     // Decrypt
-    let decrypted = decrypt_aes_gcm(&ciphertext1, &nonce1, &master_key).expect("Decryption succeeds");
+    let decrypted =
+        decrypt_aes_gcm(&ciphertext1, &nonce1, &master_key).expect("Decryption succeeds");
     assert_eq!(decrypted, secret_payload);
 
     // Corrupted ciphertext must fail authentication
     let mut tampered = ciphertext1.clone();
     tampered[0] ^= 0xFF;
-    assert!(decrypt_aes_gcm(&tampered, &nonce1, &master_key).is_err(), "Tampered ciphertext must fail authentication");
+    assert!(
+        decrypt_aes_gcm(&tampered, &nonce1, &master_key).is_err(),
+        "Tampered ciphertext must fail authentication"
+    );
 
     // Corrupted nonce must fail
     let mut bad_nonce = nonce1.clone();
     bad_nonce[0] ^= 0xFF;
-    assert!(decrypt_aes_gcm(&ciphertext1, &bad_nonce, &master_key).is_err(), "Bad nonce must fail");
+    assert!(
+        decrypt_aes_gcm(&ciphertext1, &bad_nonce, &master_key).is_err(),
+        "Bad nonce must fail"
+    );
 }
 
 #[test]
@@ -175,7 +196,7 @@ async fn test_telemetry_hub_streaming_and_ai_metrics() {
 async fn test_redis_cache_graceful_fallback() {
     // Deliberately point to an unreachable port to test graceful bypass fallback
     let unreachable_cache = RedisCache::new(Some("redis://127.0.0.1:59999".to_string())).await;
-    
+
     // Read should return None without error
     let res: Option<String> = unreachable_cache.get("nonexistent_key").await;
     assert!(res.is_none());
@@ -185,6 +206,9 @@ async fn test_redis_cache_graceful_fallback() {
 
     // Stats should honestly report disconnected
     let stats = unreachable_cache.get_stats().await;
-    assert!(!stats.is_connected, "Should honestly report Redis is disconnected");
+    assert!(
+        !stats.is_connected,
+        "Should honestly report Redis is disconnected"
+    );
     assert!(stats.status_message.contains("unavailable"));
 }

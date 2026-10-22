@@ -36,8 +36,8 @@ pub fn hash_password(password: &str) -> Result<String, CryptoError> {
 
 /// Verifies a password against an Argon2id hash string in constant time.
 pub fn verify_password(password: &str, password_hash: &str) -> Result<(), CryptoError> {
-    let parsed_hash = PasswordHash::new(password_hash)
-        .map_err(|e| CryptoError::Hashing(e.to_string()))?;
+    let parsed_hash =
+        PasswordHash::new(password_hash).map_err(|e| CryptoError::Hashing(e.to_string()))?;
     Argon2::default()
         .verify_password(password.as_bytes(), &parsed_hash)
         .map_err(|_| CryptoError::InvalidPassword)
@@ -59,7 +59,10 @@ pub fn hash_token(token: &str) -> String {
 
 /// Encrypts plaintext using AES-256-GCM with a randomly generated 96-bit nonce.
 /// Returns (ciphertext, nonce).
-pub fn encrypt_aes_gcm(plaintext: &[u8], master_key: &[u8; 32]) -> Result<(Vec<u8>, Vec<u8>), CryptoError> {
+pub fn encrypt_aes_gcm(
+    plaintext: &[u8],
+    master_key: &[u8; 32],
+) -> Result<(Vec<u8>, Vec<u8>), CryptoError> {
     let key = Key::<Aes256Gcm>::from_slice(master_key);
     let cipher = Aes256Gcm::new(key);
 
@@ -75,9 +78,15 @@ pub fn encrypt_aes_gcm(plaintext: &[u8], master_key: &[u8; 32]) -> Result<(Vec<u
 }
 
 /// Decrypts ciphertext using AES-256-GCM with the specified 96-bit nonce.
-pub fn decrypt_aes_gcm(ciphertext: &[u8], nonce: &[u8], master_key: &[u8; 32]) -> Result<Vec<u8>, CryptoError> {
+pub fn decrypt_aes_gcm(
+    ciphertext: &[u8],
+    nonce: &[u8],
+    master_key: &[u8; 32],
+) -> Result<Vec<u8>, CryptoError> {
     if nonce.len() != 12 {
-        return Err(CryptoError::Decryption("Invalid nonce length: expected 12 bytes".into()));
+        return Err(CryptoError::Decryption(
+            "Invalid nonce length: expected 12 bytes".into(),
+        ));
     }
     let key = Key::<Aes256Gcm>::from_slice(master_key);
     let cipher = Aes256Gcm::new(key);
@@ -125,11 +134,13 @@ mod tests {
     fn test_aes_gcm_encrypt_decrypt() {
         let master_key = resolve_master_key();
         let plaintext = b"sk-ant-api03-secret-key-material";
-        let (ciphertext, nonce) = encrypt_aes_gcm(plaintext, &master_key).expect("encryption succeeds");
+        let (ciphertext, nonce) =
+            encrypt_aes_gcm(plaintext, &master_key).expect("encryption succeeds");
         assert_ne!(ciphertext, plaintext);
         assert_eq!(nonce.len(), 12);
 
-        let decrypted = decrypt_aes_gcm(&ciphertext, &nonce, &master_key).expect("decryption succeeds");
+        let decrypted =
+            decrypt_aes_gcm(&ciphertext, &nonce, &master_key).expect("decryption succeeds");
         assert_eq!(decrypted, plaintext);
     }
 

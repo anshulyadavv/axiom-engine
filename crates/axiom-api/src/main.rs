@@ -1,11 +1,11 @@
+use axiom_api::cache::RedisCache;
+use axiom_api::handlers::workload::WorkloadGeneratorState;
+use axiom_api::server::{create_router, AppState, RateLimiter};
+use axiom_api::telemetry::TelemetryHub;
+use axiom_storage::Database;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use axiom_storage::Database;
-use axiom_api::server::{create_router, AppState, RateLimiter};
-use axiom_api::cache::RedisCache;
-use axiom_api::telemetry::TelemetryHub;
-use axiom_api::handlers::workload::WorkloadGeneratorState;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -19,12 +19,14 @@ async fn main() -> anyhow::Result<()> {
 
     let db_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://axiom:password@localhost:5432/axiom_engine".to_string());
-        
+
     let db = Database::connect(&db_url).await?;
     db.run_migrations().await?;
 
     let builder = metrics_exporter_prometheus::PrometheusBuilder::new();
-    let metrics_handle = builder.install_recorder().expect("failed to install Prometheus recorder");
+    let metrics_handle = builder
+        .install_recorder()
+        .expect("failed to install Prometheus recorder");
 
     let rate_limiter = Arc::new(RateLimiter::new());
     let cache = Arc::new(RedisCache::new(None).await);
@@ -39,7 +41,7 @@ async fn main() -> anyhow::Result<()> {
         telemetry,
         workload_generator,
     };
-    
+
     let app = create_router(state);
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string());

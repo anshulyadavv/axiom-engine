@@ -1,12 +1,12 @@
+use crate::crypto::hash_token;
+use crate::error::ApiError;
+use crate::server::AppState;
+use axiom_core::TenantId;
 use axum::{
     async_trait,
     extract::FromRequestParts,
     http::{request::Parts, Method},
 };
-use axiom_core::TenantId;
-use crate::error::ApiError;
-use crate::server::AppState;
-use crate::crypto::hash_token;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
@@ -49,10 +49,12 @@ pub struct AuthenticatedUser {
 impl FromRequestParts<AppState> for AuthenticatedUser {
     type Rejection = ApiError;
 
-    async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
         // 1. Check Cookie-based session
-        let cookie_header = parts.headers.get("Cookie")
-            .and_then(|v| v.to_str().ok());
+        let cookie_header = parts.headers.get("Cookie").and_then(|v| v.to_str().ok());
 
         if let Some(cookies) = cookie_header {
             for cookie in cookies.split(';') {
@@ -77,13 +79,20 @@ impl FromRequestParts<AppState> for AuthenticatedUser {
 
                     if let Some((user_id, tenant_id, role_str, csrf_token, email)) = session_row {
                         // CSRF verification on state-changing requests with cookie auth
-                        if matches!(parts.method, Method::POST | Method::PUT | Method::DELETE | Method::PATCH) {
-                            let csrf_header = parts.headers.get("X-CSRF-Token")
+                        if matches!(
+                            parts.method,
+                            Method::POST | Method::PUT | Method::DELETE | Method::PATCH
+                        ) {
+                            let csrf_header = parts
+                                .headers
+                                .get("X-CSRF-Token")
                                 .and_then(|v| v.to_str().ok())
                                 .unwrap_or("");
                             if csrf_header != csrf_token {
                                 tracing::warn!("CSRF token mismatch for user {}", user_id);
-                                return Err(ApiError::Forbidden("CSRF token validation failed".into()));
+                                return Err(ApiError::Forbidden(
+                                    "CSRF token validation failed".into(),
+                                ));
                             }
                         }
 
@@ -100,9 +109,11 @@ impl FromRequestParts<AppState> for AuthenticatedUser {
         }
 
         // 2. Check Authorization Header (supports both session tokens and API keys)
-        let auth_header = parts.headers.get("Authorization")
+        let auth_header = parts
+            .headers
+            .get("Authorization")
             .and_then(|value| value.to_str().ok());
-            
+
         if let Some(auth) = auth_header {
             if auth.starts_with("Bearer ") {
                 let token_material = auth.trim_start_matches("Bearer ").trim();
@@ -137,7 +148,7 @@ impl FromRequestParts<AppState> for AuthenticatedUser {
                 let mut hasher = Sha256::new();
                 hasher.update(token_material.as_bytes());
                 let key_hash = hex::encode(hasher.finalize());
-                
+
                 let cache_key = format!("apikey:hash:{}", key_hash);
                 if let Some(cached_tenant) = state.cache.get::<String>(&cache_key).await {
                     if let Ok(tid) = Uuid::parse_str(&cached_tenant) {
@@ -161,7 +172,10 @@ impl FromRequestParts<AppState> for AuthenticatedUser {
                     })?;
 
                 if let Some((tenant_uuid,)) = row {
-                    state.cache.set(&cache_key, &tenant_uuid.to_string(), 30).await;
+                    state
+                        .cache
+                        .set(&cache_key, &tenant_uuid.to_string(), 30)
+                        .await;
                     return Ok(AuthenticatedUser {
                         user_id: None,
                         tenant_id: TenantId(tenant_uuid),
@@ -221,9 +235,12 @@ impl FromRequestParts<AppState> for AuthenticatedUser {
                         if let Ok(Some((tenant_uuid,))) = sqlx::query_as::<_, (Uuid,)>(query)
                             .bind(&key_hash)
                             .fetch_optional(&state.db.pool)
-                            .await 
+                            .await
                         {
-                            state.cache.set(&cache_key, &tenant_uuid.to_string(), 30).await;
+                            state
+                                .cache
+                                .set(&cache_key, &tenant_uuid.to_string(), 30)
+                                .await;
                             return Ok(AuthenticatedUser {
                                 user_id: None,
                                 tenant_id: TenantId(tenant_uuid),
@@ -247,7 +264,10 @@ pub struct AuthenticatedTenant(pub TenantId);
 impl FromRequestParts<AppState> for AuthenticatedTenant {
     type Rejection = ApiError;
 
-    async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
         let user = AuthenticatedUser::from_request_parts(parts, state).await?;
         Ok(AuthenticatedTenant(user.tenant_id))
     }
@@ -260,7 +280,10 @@ pub struct RequireAdmin(pub AuthenticatedUser);
 impl FromRequestParts<AppState> for RequireAdmin {
     type Rejection = ApiError;
 
-    async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
         let user = AuthenticatedUser::from_request_parts(parts, state).await?;
         if user.role < UserRole::Admin {
             return Err(ApiError::Forbidden("Admin permissions required".into()));
@@ -276,7 +299,10 @@ pub struct RequireOperator(pub AuthenticatedUser);
 impl FromRequestParts<AppState> for RequireOperator {
     type Rejection = ApiError;
 
-    async fn from_request_parts(parts: &mut Parts, state: &AppState) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
         let user = AuthenticatedUser::from_request_parts(parts, state).await?;
         if user.role < UserRole::Operator {
             return Err(ApiError::Forbidden("Operator permissions required".into()));

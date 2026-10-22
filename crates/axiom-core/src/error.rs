@@ -12,7 +12,11 @@ pub struct DatabaseError {
 
 impl std::fmt::Display for DatabaseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "DB Error [{:?}]: {} (constraint: {:?})", self.code, self.message, self.constraint)
+        write!(
+            f,
+            "DB Error [{:?}]: {} (constraint: {:?})",
+            self.code, self.message, self.constraint
+        )
     }
 }
 

@@ -1,3 +1,7 @@
+use crate::{
+    auth::AuthenticatedUser, error::ApiError, handlers::workflows::ApiData, server::AppState,
+    telemetry::OperationalEvent,
+};
 use axum::{
     extract::{Query, State},
     response::sse::{Event, KeepAlive, Sse},
@@ -9,13 +13,6 @@ use std::convert::Infallible;
 use std::time::Duration;
 use tokio_stream::wrappers::BroadcastStream;
 use uuid::Uuid;
-use crate::{
-    server::AppState,
-    auth::AuthenticatedUser,
-    telemetry::OperationalEvent,
-    handlers::workflows::ApiData,
-    error::ApiError,
-};
 
 #[derive(Deserialize)]
 pub struct EventFilterQuery {
@@ -51,12 +48,10 @@ pub async fn event_stream(
     let run_filter = query.run_id;
 
     // 1. Snapshot of recent events
-    let snapshot = state.telemetry.get_recent_snapshot(
-        Some(tenant_id),
-        workflow_filter,
-        run_filter,
-        25,
-    );
+    let snapshot =
+        state
+            .telemetry
+            .get_recent_snapshot(Some(tenant_id), workflow_filter, run_filter, 25);
 
     let snapshot_stream = stream::iter(snapshot).map(|ev| {
         let json_str = serde_json::to_string(&ev).unwrap_or_default();
@@ -77,7 +72,9 @@ pub async fn event_stream(
                         return None;
                     }
                     if let Some(ref cat) = cat_opt {
-                        let ev_cat_str = serde_json::to_string(&ev.category).unwrap_or_default().replace('"', "");
+                        let ev_cat_str = serde_json::to_string(&ev.category)
+                            .unwrap_or_default()
+                            .replace('"', "");
                         if !ev_cat_str.eq_ignore_ascii_case(cat) {
                             return None;
                         }
@@ -103,7 +100,8 @@ pub async fn event_stream(
                     let warning_json = serde_json::json!({
                         "warning": "lagged",
                         "skipped_count": skipped
-                    }).to_string();
+                    })
+                    .to_string();
                     Some(Ok(Event::default().event("warning").data(warning_json)))
                 }
             }

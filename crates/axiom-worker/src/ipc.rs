@@ -76,6 +76,8 @@ pub enum CommandPayload {
         input: Value,
         operation_id: String,
     },
+    RecordTimestamp,
+    RecordRandom,
     CompleteWorkflow {
         output: Value,
     },
@@ -112,10 +114,7 @@ pub struct IpcError {
 #[serde(tag = "op")]
 pub enum StateRequestPayload {
     #[serde(rename = "get")]
-    Get {
-        run_id: RunId,
-        key: String,
-    },
+    Get { run_id: RunId, key: String },
     #[serde(rename = "set")]
     Set {
         run_id: RunId,
@@ -123,10 +122,7 @@ pub enum StateRequestPayload {
         value: Value,
     },
     #[serde(rename = "delete")]
-    Delete {
-        run_id: RunId,
-        key: String,
-    },
+    Delete { run_id: RunId, key: String },
 }
 
 /// The reply to a StateRequest.

@@ -1,19 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { 
-  Search, 
-  X, 
-  Layers, 
-  Clock, 
-  Cpu, 
-  Zap, 
-  Key, 
-  Settings as SettingsIcon, 
-  BookOpen, 
-  LayoutDashboard,
-  ArrowRight
-} from 'lucide-react';
+import { Search, ArrowRight } from 'lucide-react';
 import { api } from '../api';
 
 export interface CommandPaletteProps {
@@ -27,7 +15,6 @@ interface PaletteItem {
   title: string;
   subtitle?: string;
   path: string;
-  icon: React.ReactNode;
 }
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
@@ -53,22 +40,22 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
 
   // Build items list
   const navItems: PaletteItem[] = [
-    { id: 'nav-overview', category: 'Navigation', title: 'Overview Console', subtitle: 'Runtime telemetry & KPI strip', path: '/', icon: <LayoutDashboard size={14} /> },
-    { id: 'nav-workflows', category: 'Navigation', title: 'Workflows Registry', subtitle: 'Definitions & version management', path: '/workflows', icon: <Layers size={14} /> },
-    { id: 'nav-runs', category: 'Navigation', title: 'Executions Log', subtitle: 'Durable run histories & replay journals', path: '/runs', icon: <Clock size={14} /> },
-    { id: 'nav-workers', category: 'Navigation', title: 'Worker Fleet', subtitle: 'Registered nodes & heartbeat monitor', path: '/workers', icon: <Cpu size={14} /> },
-    { id: 'nav-devtools', category: 'Navigation', title: 'Development Tools', subtitle: 'Isolated test workload dispatchers', path: '/dev-tools', icon: <Zap size={14} /> },
-    { id: 'nav-docs', category: 'Navigation', title: 'Documentation & User Guide', subtitle: 'Architecture, getting started & diagnostics', path: '/docs', icon: <BookOpen size={14} /> },
-    { id: 'nav-apikeys', category: 'Navigation', title: 'API Keys', subtitle: 'Scoped Bearer credentials', path: '/api-keys', icon: <Key size={14} /> },
-    { id: 'nav-settings', category: 'Navigation', title: 'Settings', subtitle: 'Connection endpoints & theme preferences', path: '/settings', icon: <SettingsIcon size={14} /> },
+    { id: 'nav-overview', category: 'Navigation', title: 'Overview', subtitle: 'Runtime status & KPI strip', path: '/' },
+    { id: 'nav-workflows', category: 'Navigation', title: 'Workflows', subtitle: 'Definitions & version management', path: '/workflows' },
+    { id: 'nav-runs', category: 'Navigation', title: 'Executions', subtitle: 'Run histories & execution events', path: '/runs' },
+    { id: 'nav-workers', category: 'Navigation', title: 'Workers', subtitle: 'Registered nodes & heartbeat monitor', path: '/workers' },
+    { id: 'nav-devtools', category: 'Navigation', title: 'Development Tools', subtitle: 'Isolated test workload dispatchers', path: '/dev-tools' },
+    { id: 'nav-docs', category: 'Navigation', title: 'Documentation', subtitle: 'Architecture, getting started & diagnostics', path: '/docs' },
+    { id: 'nav-apikeys', category: 'Navigation', title: 'API Keys', subtitle: 'Scoped Bearer credentials', path: '/api-keys' },
+    { id: 'nav-settings', category: 'Navigation', title: 'Settings', subtitle: 'Connection endpoints & theme preferences', path: '/settings' },
   ];
 
   const docsItems: PaletteItem[] = [
-    { id: 'doc-overview', category: 'Documentation', title: 'Axiom Engine Overview', subtitle: 'Architecture & problem statement', path: '/docs#overview', icon: <BookOpen size={14} /> },
-    { id: 'doc-concepts', category: 'Documentation', title: 'Core Concepts & Semantics', subtitle: 'Definitions, runs, steps & fencing', path: '/docs#concepts', icon: <BookOpen size={14} /> },
-    { id: 'doc-quickstart', category: 'Documentation', title: 'Getting Started Guide', subtitle: 'Local run commands & prerequisites', path: '/docs#quickstart', icon: <BookOpen size={14} /> },
-    { id: 'doc-troubleshoot', category: 'Documentation', title: 'Troubleshooting & Diagnostics', subtitle: 'Common errors & resolutions', path: '/docs#troubleshooting', icon: <BookOpen size={14} /> },
-    { id: 'doc-architecture', category: 'Documentation', title: 'Runtime Guarantees & Invariants', subtitle: 'Durability model & failure taxonomy', path: '/docs#architecture', icon: <BookOpen size={14} /> },
+    { id: 'doc-overview', category: 'Documentation', title: 'Axiom Engine Overview', subtitle: 'Architecture & problem statement', path: '/docs#overview' },
+    { id: 'doc-concepts', category: 'Documentation', title: 'Core Concepts & Semantics', subtitle: 'Definitions, runs, steps & fencing', path: '/docs#concepts' },
+    { id: 'doc-quickstart', category: 'Documentation', title: 'Getting Started Guide', subtitle: 'Local run commands & prerequisites', path: '/docs#quickstart' },
+    { id: 'doc-troubleshoot', category: 'Documentation', title: 'Troubleshooting & Diagnostics', subtitle: 'Common errors & resolutions', path: '/docs#troubleshooting' },
+    { id: 'doc-architecture', category: 'Documentation', title: 'Runtime Guarantees & Invariants', subtitle: 'Durability model & failure taxonomy', path: '/docs#architecture' },
   ];
 
   const workflowItems: PaletteItem[] = workflows.map((wf: any) => ({
@@ -76,8 +63,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
     category: 'Workflows',
     title: wf.name,
     subtitle: `v${wf.version} ${wf.description ? '— ' + wf.description : ''}`,
-    path: `/workflows/${wf.id}`,
-    icon: <Layers size={14} />
+    path: `/workflows/${wf.id}`
   }));
 
   const runItems: PaletteItem[] = runs.slice(0, 8).map((run: any) => ({
@@ -85,8 +71,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
     category: 'Executions',
     title: run.workflow_name || run.workflow_id || 'Execution',
     subtitle: `Run ID: ${run.id.slice(0, 12)}... (${run.status})`,
-    path: `/runs/${run.id}`,
-    icon: <Clock size={14} />
+    path: `/runs/${run.id}`
   }));
 
   const allItems: PaletteItem[] = [...navItems, ...docsItems, ...workflowItems, ...runItems];
@@ -227,27 +212,22 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
                     transition: 'background-color 0.1s ease',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
-                    <div style={{ color: isSelected ? 'var(--accent)' : 'var(--text-muted)', flexShrink: 0 }}>
-                      {item.icon}
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 500, fontSize: 'var(--font-size-sm)', color: 'var(--text-primary)' }}>
+                      {item.title}
                     </div>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 500, fontSize: 'var(--font-size-sm)', color: 'var(--text-primary)' }}>
-                        {item.title}
+                    {item.subtitle && (
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {item.subtitle}
                       </div>
-                      {item.subtitle && (
-                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {item.subtitle}
-                        </div>
-                      )}
-                    </div>
+                    )}
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0, marginLeft: '0.75rem' }}>
                     <span style={{ fontSize: '10px', color: 'var(--text-muted)', backgroundColor: 'var(--bg-app)', border: '1px solid var(--border-default)', padding: '1px 5px', borderRadius: 'var(--radius-sm)' }}>
                       {item.category}
                     </span>
-                    {isSelected && <ArrowRight size={12} style={{ color: 'var(--accent)' }} />}
+                    {isSelected && <ArrowRight size={12} className="palette-arrow" style={{ color: 'var(--accent)' }} />}
                   </div>
                 </div>
               );

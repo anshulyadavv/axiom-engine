@@ -37,11 +37,18 @@ export function useLiveEvents() {
       : `api_key=${encodeURIComponent(apiKey)}`;
     const streamUrl = `${config.url}/events/stream?${authParam}`;
 
+    // Maximum consecutive reconnect attempts before transitioning honestly to 'disconnected'
+    const MAX_RECONNECT_ATTEMPTS = 4;
     let es: EventSource | null = null;
     let reconnectTimeout: any = null;
     let attemptCount = 0;
 
     function connect() {
+      if (attemptCount >= MAX_RECONNECT_ATTEMPTS) {
+        setConnectionStatus('disconnected');
+        return;
+      }
+
       setConnectionStatus(attemptCount === 0 ? 'connecting' : 'reconnecting');
       try {
         es = new EventSource(streamUrl, { withCredentials: true });
@@ -58,7 +65,7 @@ export function useLiveEvents() {
             setEvents((prev) => [parsed, ...prev.filter(e => e.event_id !== parsed.event_id)].slice(0, 100));
             setLastEventTime(new Date(parsed.timestamp));
 
-            // Reactively invalidate affected dashboard queries
+            // Invalidate affected dashboard queries
             queryClient.invalidateQueries({ queryKey: ['overview'] });
             if (parsed.category === 'run' || parsed.category === 'step') {
               queryClient.invalidateQueries({ queryKey: ['runs'] });
@@ -75,24 +82,29 @@ export function useLiveEvents() {
             if (parsed.category === 'workflow') {
               queryClient.invalidateQueries({ queryKey: ['workflows'] });
             }
-          } catch (e) {
-            // Heartbeat or malformed comment
+          } catch {
+            // Heartbeat comment
           }
         };
 
         es.onerror = () => {
           attemptCount++;
-          setConnectionStatus('reconnecting');
           if (es) {
             es.close();
           }
-          // Exponential backoff capped at 8s
+
+          if (attemptCount >= MAX_RECONNECT_ATTEMPTS) {
+            setConnectionStatus('disconnected');
+            return;
+          }
+
+          setConnectionStatus('reconnecting');
           const delay = Math.min(1000 * Math.pow(1.5, attemptCount), 8000);
           reconnectTimeout = setTimeout(() => {
             connect();
           }, delay);
         };
-      } catch (err) {
+      } catch {
         setConnectionStatus('disconnected');
       }
     }
@@ -107,10 +119,34 @@ export function useLiveEvents() {
     };
   }, [queryClient]);
 
+  const retry = () => {
+    // Force re-trigger of effect
+    setConnectionStatus('connecting');
+    const config = getApiConfig();
+    const sessionToken = localStorage.getItem('axiom_session_token');
+    const apiKey = localStorage.getItem('axiom_api_key') || config.key || 'axm_live_dummykey';
+    const authParam = sessionToken 
+      ? `token=${encodeURIComponent(sessionToken)}` 
+      : `api_key=${encodeURIComponent(apiKey)}`;
+    const streamUrl = `${config.url}/events/stream?${authParam}`;
+    
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+    }
+    const es = new EventSource(streamUrl, { withCredentials: true });
+    eventSourceRef.current = es;
+    es.onopen = () => setConnectionStatus('connected');
+    es.onerror = () => {
+      es.close();
+      setConnectionStatus('disconnected');
+    };
+  };
+
   return {
     events,
     connectionStatus,
     lastEventTime,
-    clearEvents: () => setEvents([])
+    clearEvents: () => setEvents([]),
+    retry
   };
 }

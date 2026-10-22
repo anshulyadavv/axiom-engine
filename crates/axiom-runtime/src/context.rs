@@ -29,12 +29,10 @@ impl ExecutionContext {
                 self.cursor.consume_event();
                 Err(AxiomError::Internal(format!("Step failed: {}", err))) // Would be mapped to a workflow-level error
             }
-            Some(evt) => {
-                Err(AxiomError::DeterminismViolation(format!(
-                    "Expected StepCompleted for {}, found {:?}",
-                    step_id, evt
-                )))
-            }
+            Some(evt) => Err(AxiomError::DeterminismViolation(format!(
+                "Expected StepCompleted for {}, found {:?}",
+                step_id, evt
+            ))),
             None => {
                 if self.command.is_none() {
                     self.command = Some(Command::ScheduleStep {

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
 import { format } from 'date-fns';
-import { Key, Plus, Trash2, Copy, Check, ShieldCheck, AlertTriangle, X } from 'lucide-react';
+import { Copy, Check, X } from 'lucide-react';
 import { PageHeader, Button, Badge, EmptyState } from '../components/ui';
 
 export const ApiKeys = () => {
@@ -49,17 +49,14 @@ export const ApiKeys = () => {
       {/* Creation Card */}
       <div className="card" style={{ marginBottom: '1.25rem' }}>
         <div className="card-header">
-          <span className="card-title">
-            <Plus size={16} style={{ color: 'var(--accent)' }} />
-            Generate New API Key
-          </span>
+          <span className="card-title">Generate new API key</span>
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: '240px', maxWidth: '400px' }}>
             <input 
               type="text" 
-              placeholder="Key label (e.g. CI/CD Dispatcher, Production Worker)" 
+              placeholder="Key label (e.g. CI/CD Dispatcher, Worker)" 
               value={newKeyName}
               onChange={e => setNewKeyName(e.target.value)}
               onKeyDown={e => {
@@ -74,7 +71,6 @@ export const ApiKeys = () => {
             disabled={!newKeyName.trim()}
             isLoading={createMutation.isPending}
             onClick={() => createMutation.mutate(newKeyName.trim())}
-            icon={<Key size={14} />}
           >
             Generate API Key
           </Button>
@@ -84,21 +80,16 @@ export const ApiKeys = () => {
       {/* One-time Secret Disclosure Modal */}
       {createdKey && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ borderColor: 'var(--accent-border)' }}>
+          <div className="modal-content" style={{ borderColor: 'var(--border-default)' }}>
             <div className="modal-header">
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent)' }}>
-                <ShieldCheck size={18} /> API Key Generated Successfully
-              </span>
+              <span style={{ fontWeight: 600 }}>API Key Generated</span>
               <button className="btn btn-sm btn-ghost" onClick={() => setCreatedKey(null)}>
                 <X size={16} />
               </button>
             </div>
             <div className="modal-body">
-              <div style={{ padding: '0.75rem', backgroundColor: 'var(--status-warning-bg)', border: '1px solid var(--status-warning-border)', borderRadius: 'var(--radius-md)', color: 'var(--status-warning)', fontSize: 'var(--font-size-xs)', marginBottom: '1rem', display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
-                <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
-                <span>
-                  <strong>Copy this key now.</strong> For your security, the secret key cannot be displayed again after closing this window.
-                </span>
+              <div style={{ padding: '0.75rem', backgroundColor: 'var(--bg-surface-elevated)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', color: 'var(--text-secondary)', fontSize: 'var(--font-size-xs)', marginBottom: '1rem' }}>
+                <strong>Copy this key now.</strong> For security, this key cannot be displayed again after closing this window.
               </div>
 
               <label>Secret API Key Token</label>
@@ -108,7 +99,7 @@ export const ApiKeys = () => {
                   readOnly 
                   value={createdKey} 
                   className="font-mono" 
-                  style={{ fontSize: '12px', backgroundColor: 'var(--bg-surface-elevated)' }}
+                  style={{ fontSize: '12px', backgroundColor: 'var(--bg-app)' }}
                 />
                 <button 
                   className="btn btn-primary" 
@@ -122,7 +113,7 @@ export const ApiKeys = () => {
             </div>
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={() => setCreatedKey(null)}>
-                I Have Saved My Secret Key
+                Done
               </button>
             </div>
           </div>
@@ -133,16 +124,17 @@ export const ApiKeys = () => {
       <div className="table-wrapper">
         <div className="table-header-bar">
           <div className="table-header-title">
-            <Key size={16} style={{ color: 'var(--accent)' }} />
             <span>Active API Keys</span>
-            <span className="badge badge-neutral tabular-nums">{keys.length} keys</span>
+            {keys.length > 0 && (
+              <Badge variant="neutral">{keys.length} keys</Badge>
+            )}
           </div>
         </div>
 
         <div className="table-container">
           {isLoading ? (
             <div style={{ padding: '3.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-              Loading active credentials...
+              Loading credentials...
             </div>
           ) : keys.length === 0 ? (
             <EmptyState
@@ -157,7 +149,7 @@ export const ApiKeys = () => {
                   <th>Key Prefix</th>
                   <th>Status</th>
                   <th>Created</th>
-                  <th>Actions</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -168,18 +160,17 @@ export const ApiKeys = () => {
                       {k.prefix || 'axm_live_••••'}
                     </td>
                     <td>
-                      <Badge variant="success" dot>ACTIVE</Badge>
+                      <Badge variant="success">Active</Badge>
                     </td>
                     <td className="tabular-nums" style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
                       {k.created_at ? format(new Date(k.created_at), 'yyyy-MM-dd HH:mm') : '—'}
                     </td>
-                    <td>
+                    <td style={{ textAlign: 'right' }}>
                       <Button 
                         variant="danger"
                         size="sm"
                         onClick={() => revokeMutation.mutate(k.id)}
                         isLoading={revokeMutation.isPending}
-                        icon={<Trash2 size={12} />}
                       >
                         Revoke
                       </Button>

@@ -1,16 +1,21 @@
+use crate::{models::RunStateRow, traits::StateRepository, Database};
 use async_trait::async_trait;
-use axiom_core::{RunId, TenantId, Result};
-use crate::{Database, models::RunStateRow, traits::StateRepository};
+use axiom_core::{Result, RunId, TenantId};
 
 #[async_trait]
 impl StateRepository for Database {
-    async fn get_state(&self, tenant_id: TenantId, run_id: RunId, key: &str) -> Result<Option<RunStateRow>> {
+    async fn get_state(
+        &self,
+        tenant_id: TenantId,
+        run_id: RunId,
+        key: &str,
+    ) -> Result<Option<RunStateRow>> {
         let row = sqlx::query_as::<_, RunStateRow>(
             r#"
             SELECT id, tenant_id, run_id, key, value, schema_version, created_at, updated_at
             FROM workflow_run_state
             WHERE tenant_id = $1 AND run_id = $2 AND key = $3
-            "#
+            "#,
         )
         .bind(tenant_id)
         .bind(run_id)
@@ -22,7 +27,13 @@ impl StateRepository for Database {
         Ok(row)
     }
 
-    async fn set_state(&self, tenant_id: TenantId, run_id: RunId, key: &str, value: serde_json::Value) -> Result<RunStateRow> {
+    async fn set_state(
+        &self,
+        tenant_id: TenantId,
+        run_id: RunId,
+        key: &str,
+        value: serde_json::Value,
+    ) -> Result<RunStateRow> {
         let row = sqlx::query_as::<_, RunStateRow>(
             r#"
             INSERT INTO workflow_run_state (id, tenant_id, run_id, key, value, schema_version, created_at, updated_at)
@@ -51,7 +62,7 @@ impl StateRepository for Database {
             r#"
             DELETE FROM workflow_run_state
             WHERE tenant_id = $1 AND run_id = $2 AND key = $3
-            "#
+            "#,
         )
         .bind(tenant_id)
         .bind(run_id)

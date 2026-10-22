@@ -1,6 +1,6 @@
+use crate::{models::OutboxMessageRow, traits::OutboxRepository, Database};
 use async_trait::async_trait;
-use axiom_core::{Result, AxiomError};
-use crate::{Database, models::OutboxMessageRow, traits::OutboxRepository};
+use axiom_core::{AxiomError, Result};
 
 #[async_trait]
 impl OutboxRepository for Database {
@@ -57,7 +57,7 @@ impl OutboxRepository for Database {
         let result = sqlx::query(
             r#"
             DELETE FROM outbox_messages WHERE id = $1 AND claim_token = $2
-            "#
+            "#,
         )
         .bind(id)
         .bind(claim_token)

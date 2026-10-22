@@ -128,7 +128,7 @@ export const Docs: React.FC = () => {
       <PageHeader
         title="Documentation & User Guide"
         description="Complete operational manual, runtime concepts, local development workflow, and troubleshooting diagnostics."
-        badge={<Badge variant="primary" withDot={false}>v2.0-alpha</Badge>}
+        badge={<Badge variant="neutral" withDot={false}>v2.0-alpha</Badge>}
       />
 
       <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '2rem', alignItems: 'flex-start' }}>
@@ -232,7 +232,7 @@ export const Docs: React.FC = () => {
                       <strong>NATS JetStream:</strong> High-throughput distributed work queue broker for dispatching execution intents to worker nodes.
                     </div>
                     <div style={{ padding: '0.75rem', backgroundColor: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-md)' }}>
-                      <strong>Redis (Optional):</strong> Fail-soft operational cache for fast telemetry snapshots, query acceleration, and rate-limiting.
+                      <strong>Redis (Optional):</strong> Fail-soft cache for query acceleration and rate-limiting.
                     </div>
                   </div>
                 </div>
@@ -266,7 +266,7 @@ export const Docs: React.FC = () => {
 
                 <div>
                   <strong>Step 3: Start the Axiom API Server (Port 3000)</strong>
-                  <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>Initializes database schema and starts the REST & SSE telemetry server:</p>
+                  <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>Initializes database schema and starts the REST & SSE API server:</p>
                   <CodeSnippet code="cargo run -p axiom-api" />
                 </div>
 
@@ -298,7 +298,7 @@ export const Docs: React.FC = () => {
             <Card title="4. Understanding Each Console Page">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
                 <div style={{ padding: '0.75rem', backgroundColor: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-md)' }}>
-                  <strong style={{ color: 'var(--text-primary)' }}>Overview:</strong> Executive operational cockpit. Shows active leases, 24-hour completed/failed totals, success rate calculated strictly over terminal runs, 7-day activity chart, outcome breakdown, infrastructure readiness, live SSE telemetry feed, and Redis/AI integration cards.
+                  <strong style={{ color: 'var(--text-primary)' }}>Overview:</strong> Infrastructure overview. Shows active executions, 24-hour completed/failed totals, success rate over terminal runs, system status, and recent runs.
                 </div>
                 <div style={{ padding: '0.75rem', backgroundColor: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-md)' }}>
                   <strong style={{ color: 'var(--text-primary)' }}>Workflows:</strong> Registry of all recognized workflow definitions. Displays workflow names, versions, descriptions, and allows manual execution dispatch with custom JSON input payloads.
@@ -307,7 +307,7 @@ export const Docs: React.FC = () => {
                   <strong style={{ color: 'var(--text-primary)' }}>Executions (Runs):</strong> Searchable and filterable table of all persisted execution instances. Clicking an execution opens the detailed timeline, showing individual step durations, attempt counts, collapsible inputs/outputs, and raw journal events.
                 </div>
                 <div style={{ padding: '0.75rem', backgroundColor: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-md)' }}>
-                  <strong style={{ color: 'var(--text-primary)' }}>Worker Fleet:</strong> Monitor active worker nodes, registered hostnames, process IDs (PID), runtime versions, and heartbeat freshness (&lt;120s timeout). Provides actionable launch commands if no nodes are detected.
+                  <strong style={{ color: 'var(--text-primary)' }}>Workers:</strong> Monitor active worker nodes, registered hostnames, process IDs (PID), runtime versions, and heartbeat freshness (&lt;120s timeout). Provides actionable launch commands if no nodes are detected.
                 </div>
                 <div style={{ padding: '0.75rem', backgroundColor: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-md)' }}>
                   <strong style={{ color: 'var(--text-primary)' }}>Development Tools:</strong> Isolated test workbench to trigger verified workloads (multi-step order flow, exponential retry, controlled failure, and AI triage agent). Includes a protected dev-run cleanup action requiring explicit confirmation.
@@ -340,11 +340,11 @@ export const Docs: React.FC = () => {
                     <strong>Controlled Failure:</strong> Simulates an unrecoverable business failure. Verifies error serialization, failure tagging, and terminal state transitions.
                   </div>
                   <div style={{ padding: '0.75rem', backgroundColor: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-md)' }}>
-                    <strong>AI Incident Triage:</strong> Executes a multi-step agent loop with tool calls using the local deterministic adapter. Verifies tool call counts and token telemetry.
+                    <strong>AI Incident Triage:</strong> Executes a multi-step agent loop with tool calls using the local deterministic adapter. Verifies tool call counts and token usage.
                   </div>
                 </div>
                 <div style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-md)', fontSize: 'var(--font-size-xs)' }}>
-                  <strong>Safe Data Cleanup:</strong> Resetting development runs targets only synthetic executions created by the development workload generator. Production tenant executions and durable audit logs are never modified.
+                  <strong>Safe Data Cleanup:</strong> Resetting development runs targets only synthetic executions created by the development workload generator. Production tenant executions and audit logs are never modified.
                 </div>
               </div>
             </Card>
@@ -387,7 +387,7 @@ export const Docs: React.FC = () => {
                 </div>
 
                 <div style={{ padding: '0.75rem 1rem', backgroundColor: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-md)' }}>
-                  <div style={{ fontWeight: 600, color: 'var(--status-warning)', marginBottom: '0.25rem' }}>Issue: Live Telemetry Stream Disconnected</div>
+                  <div style={{ fontWeight: 600, color: 'var(--status-warning)', marginBottom: '0.25rem' }}>Issue: Live Event Stream Disconnected</div>
                   <div style={{ fontSize: 'var(--font-size-xs)', lineHeight: 1.5 }}>
                     Verify authentication headers or API keys in Settings. EventSource connections to <code>/v1/events/stream</code> require valid credentials.
                   </div>

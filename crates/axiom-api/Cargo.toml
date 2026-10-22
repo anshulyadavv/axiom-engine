@@ -8,7 +8,7 @@ axiom-core = { path = "../axiom-core" }
 axiom-storage = { path = "../axiom-storage" }
 tokio = { version = "1", features = ["full"] }
 axum = "0.7"
-tower = "0.4"
+tower = { version = "0.4", features = ["util"] }
 tower-http = { version = "0.5", features = ["trace", "cors"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

@@ -1,6 +1,6 @@
+use crate::{models::WorkflowRow, traits::WorkflowRepository, Database};
 use async_trait::async_trait;
-use axiom_core::{TenantId, WorkflowId, Result, AxiomError};
-use crate::{Database, models::WorkflowRow, traits::WorkflowRepository};
+use axiom_core::{AxiomError, Result, TenantId, WorkflowId};
 
 #[async_trait]
 impl WorkflowRepository for Database {
@@ -42,7 +42,12 @@ impl WorkflowRepository for Database {
         Ok(row)
     }
 
-    async fn get_workflow_by_name(&self, tenant_id: TenantId, name: &str, version: i32) -> Result<Option<WorkflowRow>> {
+    async fn get_workflow_by_name(
+        &self,
+        tenant_id: TenantId,
+        name: &str,
+        version: i32,
+    ) -> Result<Option<WorkflowRow>> {
         let row = sqlx::query_as::<_, WorkflowRow>(
             "SELECT id, tenant_id, name, version, description, definition, status, retry_policy, timeout, created_at, updated_at FROM workflows WHERE tenant_id = $1 AND name = $2 AND version = $3"
         )
@@ -56,7 +61,13 @@ impl WorkflowRepository for Database {
         Ok(row)
     }
 
-    async fn list_workflows(&self, tenant_id: TenantId, limit: i64, offset: i64, name: Option<String>) -> Result<Vec<WorkflowRow>> {
+    async fn list_workflows(
+        &self,
+        tenant_id: TenantId,
+        limit: i64,
+        offset: i64,
+        name: Option<String>,
+    ) -> Result<Vec<WorkflowRow>> {
         let rows = if let Some(n) = name {
             sqlx::query_as::<_, WorkflowRow>(
                 "SELECT id, tenant_id, name, version, description, definition, status, retry_policy, timeout, created_at, updated_at FROM workflows WHERE tenant_id = $1 AND name = $2 ORDER BY created_at DESC LIMIT $3 OFFSET $4"
@@ -83,9 +94,13 @@ impl WorkflowRepository for Database {
         Ok(rows)
     }
 
-    async fn get_workflow_stats(&self, tenant_id: TenantId, workflow_id: WorkflowId) -> Result<axiom_core::ExecutionAnalytics> {
+    async fn get_workflow_stats(
+        &self,
+        tenant_id: TenantId,
+        workflow_id: WorkflowId,
+    ) -> Result<axiom_core::ExecutionAnalytics> {
         use sqlx::Row;
-        
+
         let row = sqlx::query(
             r#"
             SELECT 

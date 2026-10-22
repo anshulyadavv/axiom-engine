@@ -30,7 +30,9 @@ pub struct RunId(pub Uuid);
 #[sqlx(transparent)]
 pub struct StepId(pub String);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, sqlx::Type)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, sqlx::Type,
+)]
 #[serde(transparent)]
 #[sqlx(transparent)]
 pub struct FenceToken(pub i64);
@@ -56,7 +58,9 @@ impl sqlx::Type<sqlx::Postgres> for RunStatus {
 }
 
 impl<'r> sqlx::Decode<'r, sqlx::Postgres> for RunStatus {
-    fn decode(value: sqlx::postgres::PgValueRef<'r>) -> Result<Self, Box<dyn std::error::Error + 'static + Send + Sync>> {
+    fn decode(
+        value: sqlx::postgres::PgValueRef<'r>,
+    ) -> Result<Self, Box<dyn std::error::Error + 'static + Send + Sync>> {
         let s = <String as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
         match s.as_str() {
             "pending" => Ok(RunStatus::Pending),
@@ -74,7 +78,10 @@ impl<'r> sqlx::Decode<'r, sqlx::Postgres> for RunStatus {
 }
 
 impl<'q> sqlx::Encode<'q, sqlx::Postgres> for RunStatus {
-    fn encode_by_ref(&self, buf: &mut <sqlx::Postgres as sqlx::database::HasArguments<'q>>::ArgumentBuffer) -> sqlx::encode::IsNull {
+    fn encode_by_ref(
+        &self,
+        buf: &mut <sqlx::Postgres as sqlx::database::HasArguments<'q>>::ArgumentBuffer,
+    ) -> sqlx::encode::IsNull {
         let s = match self {
             RunStatus::Pending => "pending",
             RunStatus::Running => "running",
@@ -107,7 +114,9 @@ impl sqlx::Type<sqlx::Postgres> for StepStatus {
 }
 
 impl<'r> sqlx::Decode<'r, sqlx::Postgres> for StepStatus {
-    fn decode(value: sqlx::postgres::PgValueRef<'r>) -> Result<Self, Box<dyn std::error::Error + 'static + Send + Sync>> {
+    fn decode(
+        value: sqlx::postgres::PgValueRef<'r>,
+    ) -> Result<Self, Box<dyn std::error::Error + 'static + Send + Sync>> {
         let s = <String as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
         match s.as_str() {
             "pending" => Ok(StepStatus::Pending),
@@ -121,7 +130,10 @@ impl<'r> sqlx::Decode<'r, sqlx::Postgres> for StepStatus {
 }
 
 impl<'q> sqlx::Encode<'q, sqlx::Postgres> for StepStatus {
-    fn encode_by_ref(&self, buf: &mut <sqlx::Postgres as sqlx::database::HasArguments<'q>>::ArgumentBuffer) -> sqlx::encode::IsNull {
+    fn encode_by_ref(
+        &self,
+        buf: &mut <sqlx::Postgres as sqlx::database::HasArguments<'q>>::ArgumentBuffer,
+    ) -> sqlx::encode::IsNull {
         let s = match self {
             StepStatus::Pending => "pending",
             StepStatus::Running => "running",
@@ -139,12 +151,21 @@ mod tests {
 
     #[test]
     fn test_run_status_serialization() {
-        assert_eq!(serde_json::to_string(&RunStatus::Pending).unwrap(), "\"pending\"");
-        assert_eq!(serde_json::to_string(&RunStatus::VersionMismatch).unwrap(), "\"version_mismatch\"");
+        assert_eq!(
+            serde_json::to_string(&RunStatus::Pending).unwrap(),
+            "\"pending\""
+        );
+        assert_eq!(
+            serde_json::to_string(&RunStatus::VersionMismatch).unwrap(),
+            "\"version_mismatch\""
+        );
     }
 
     #[test]
     fn test_step_status_serialization() {
-        assert_eq!(serde_json::to_string(&StepStatus::TimedOut).unwrap(), "\"timed_out\"");
+        assert_eq!(
+            serde_json::to_string(&StepStatus::TimedOut).unwrap(),
+            "\"timed_out\""
+        );
     }
 }

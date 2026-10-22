@@ -2,65 +2,63 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import type { OperationalEvent } from '../api';
 import { formatDistanceToNow } from 'date-fns';
-import { Activity, Radio, ArrowUpRight, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Badge, type BadgeVariant } from './ui/Badge';
 
 interface LiveEventFeedProps {
   events: OperationalEvent[];
   connectionStatus: 'connecting' | 'connected' | 'reconnecting' | 'disconnected';
   onClear?: () => void;
+  onRetry?: () => void;
 }
 
-export const LiveEventFeed: React.FC<LiveEventFeedProps> = ({ events, connectionStatus, onClear }) => {
-  const getCategoryBadgeClass = (category: string) => {
+export const LiveEventFeed: React.FC<LiveEventFeedProps> = ({ 
+  events, 
+  connectionStatus, 
+  onClear,
+  onRetry 
+}) => {
+  const getCategoryVariant = (category: string): BadgeVariant => {
     switch (category) {
       case 'run':
-        return 'badge-info';
+        return 'info';
       case 'step':
-        return 'badge-primary';
+        return 'info';
       case 'worker':
-        return 'badge-success';
+        return 'success';
       case 'cache':
-        return 'badge-warning';
+        return 'warning';
       case 'ai_agent':
-        return 'badge-info';
+        return 'info';
       case 'workflow':
-        return 'badge-primary';
+        return 'info';
       default:
-        return 'badge-neutral';
+        return 'neutral';
+    }
+  };
+
+  const getCategoryLabel = (category: string) => {
+    switch (category) {
+      case 'run': return 'Run';
+      case 'step': return 'Step';
+      case 'worker': return 'Worker';
+      case 'cache': return 'Cache';
+      case 'ai_agent': return 'AI';
+      case 'workflow': return 'Workflow';
+      default: return category.charAt(0).toUpperCase() + category.slice(1);
     }
   };
 
   const getStatusBadge = () => {
     switch (connectionStatus) {
       case 'connected':
-        return (
-          <span className="badge badge-success">
-            <span className="badge-dot animate-pulse" />
-            SSE LIVE
-          </span>
-        );
+        return <Badge variant="success">Connected</Badge>;
       case 'connecting':
-        return (
-          <span className="badge badge-warning">
-            <RefreshCw size={10} className="animate-spin" />
-            CONNECTING...
-          </span>
-        );
+        return <Badge variant="neutral">Connecting</Badge>;
       case 'reconnecting':
-        return (
-          <span className="badge badge-warning">
-            <RefreshCw size={10} className="animate-spin" />
-            RECONNECTING...
-          </span>
-        );
+        return <Badge variant="neutral">Reconnecting</Badge>;
       case 'disconnected':
       default:
-        return (
-          <span className="badge badge-error">
-            <AlertCircle size={10} />
-            DISCONNECTED
-          </span>
-        );
+        return <Badge variant="error">Disconnected</Badge>;
     }
   };
 
@@ -68,12 +66,16 @@ export const LiveEventFeed: React.FC<LiveEventFeedProps> = ({ events, connection
     <div className="card" style={{ padding: 0, display: 'flex', flexDirection: 'column' }}>
       <div className="table-header-bar">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
-          <Activity size={16} style={{ color: 'var(--accent)' }} />
-          <span style={{ fontWeight: 600, fontSize: 'var(--font-size-sm)' }}>Live Operational Event Stream</span>
+          <span style={{ fontWeight: 600, fontSize: 'var(--font-size-sm)' }}>Event stream</span>
           {getStatusBadge()}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {connectionStatus === 'disconnected' && onRetry && (
+            <button className="btn btn-sm btn-secondary" onClick={onRetry}>
+              Retry
+            </button>
+          )}
           {events.length > 0 && onClear && (
             <button className="btn btn-sm btn-ghost" onClick={onClear} title="Clear buffer">
               Clear
@@ -86,12 +88,18 @@ export const LiveEventFeed: React.FC<LiveEventFeedProps> = ({ events, connection
         {events.length === 0 ? (
           <div style={{ padding: '3.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: 'var(--font-size-sm)' }}>
             {connectionStatus === 'connected' ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-                <Radio size={24} style={{ color: 'var(--accent)', opacity: 0.8 }} />
-                <span>Stream active. Listening for live worker leases, step transitions, and AI events...</span>
+              <span>Stream connected. Listening for events...</span>
+            ) : connectionStatus === 'disconnected' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                <span>Stream disconnected.</span>
+                {onRetry && (
+                  <button className="btn btn-sm btn-secondary" onClick={onRetry}>
+                    Retry connection
+                  </button>
+                )}
               </div>
             ) : (
-              <span>Establishing durable telemetry stream connection...</span>
+              <span>Connecting to event stream...</span>
             )}
           </div>
         ) : (
@@ -108,9 +116,9 @@ export const LiveEventFeed: React.FC<LiveEventFeedProps> = ({ events, connection
                   fontSize: 'var(--font-size-xs)'
                 }}
               >
-                <span className={`badge ${getCategoryBadgeClass(ev.category)}`} style={{ textTransform: 'uppercase', fontSize: '9px', padding: '1px 5px', marginTop: '2px' }}>
-                  {ev.category}
-                </span>
+                <Badge variant={getCategoryVariant(ev.category)} withDot={false} style={{ fontSize: '10px', padding: '1px 5px', marginTop: '2px' }}>
+                  {getCategoryLabel(ev.category)}
+                </Badge>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '2px' }}>

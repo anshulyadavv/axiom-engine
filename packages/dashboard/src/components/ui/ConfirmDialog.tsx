@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { AlertTriangle, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Button } from './Button';
 
 export interface ConfirmDialogProps {
@@ -47,8 +47,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         style={{ borderColor: variant === 'danger' ? 'var(--status-error-border)' : 'var(--border-default)' }}
       >
         <div className="modal-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: variant === 'danger' ? 'var(--status-error)' : 'inherit' }}>
-            {variant === 'danger' && <AlertTriangle size={18} />}
+          <div style={{ color: variant === 'danger' ? 'var(--status-error)' : 'inherit', fontWeight: 600 }}>
             <span>{title}</span>
           </div>
           <button

@@ -2,19 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { api, type WorkloadStatusResponse } from '../api';
-import { 
-  Play, 
-  Square, 
-  RotateCw, 
-  Trash2, 
-  Zap, 
-  AlertTriangle, 
-  CheckCircle2, 
-  ShieldAlert, 
-  Bot, 
-  ArrowUpRight,
-  Info
-} from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { PageHeader, Button, Badge, ConfirmDialog } from '../components/ui';
 
 export const DevTools = () => {
@@ -63,7 +51,7 @@ export const DevTools = () => {
       refetchStatus();
       setFeedback({
         type: 'info',
-        message: `Continuous generator started (${ratePerSec} run/s, concurrency: ${maxConcurrency})`
+        message: `Generator started (${ratePerSec} run/s, concurrency: ${maxConcurrency})`
       });
     },
     onError: (err: any) => {
@@ -80,7 +68,7 @@ export const DevTools = () => {
       refetchStatus();
       setFeedback({
         type: 'info',
-        message: 'Continuous workload generator stopped.'
+        message: 'Generator stopped.'
       });
     }
   });
@@ -110,17 +98,14 @@ export const DevTools = () => {
       {/* Header */}
       <PageHeader
         title="Development Tools"
-        badge={<Badge variant="warning">DEV ENVIRONMENT</Badge>}
-        description="Dispatch synthetic test workloads and validate replay semantics through real engine infrastructure."
+        badge={<Badge variant="neutral">Dev</Badge>}
+        description="Dispatch test workloads and validate replay semantics through real engine infrastructure."
       />
 
       {/* Safety Notice */}
       <div className="card" style={{ marginBottom: '1.25rem', backgroundColor: 'var(--bg-surface-elevated)', borderColor: 'var(--border-default)' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-          <Info size={18} style={{ color: 'var(--accent)', marginTop: '2px', flexShrink: 0 }} />
-          <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
-            <strong>Operational Isolation:</strong> Controls on this page submit real execution jobs through PostgreSQL, NATS JetStream, and the local worker sidecar. Reset operations exclusively purge development benchmark records and never alter regular tenant executions.
-          </div>
+        <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)' }}>
+          <strong>Isolation:</strong> Controls on this page submit real execution jobs through PostgreSQL, NATS, and the local worker sidecar. Reset operations exclusively purge development benchmark records.
         </div>
       </div>
 
@@ -136,41 +121,36 @@ export const DevTools = () => {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              {feedback.type === 'success' ? <CheckCircle2 size={16} className="text-success" /> : feedback.type === 'error' ? <AlertTriangle size={16} className="text-error" /> : <Info size={16} />}
-              <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 500, color: 'var(--text-primary)' }}>{feedback.message}</span>
-            </div>
+            <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 500, color: 'var(--text-primary)' }}>
+              {feedback.message}
+            </span>
             {feedback.runId && (
               <Link to={`/runs/${feedback.runId}`} className="btn btn-sm btn-secondary" style={{ gap: '0.25rem' }}>
-                Inspect Run <ArrowUpRight size={12} />
+                Inspect run <ArrowRight size={12} className="link-arrow" />
               </Link>
             )}
           </div>
         </div>
       )}
 
-      {/* 2-Column Grid: Continuous Generator + Individual Workloads */}
+      {/* 2-Column Grid */}
       <div className="overview-grid-2col">
         {/* Continuous Workload Generator */}
         <div className="card">
           <div className="card-header">
-            <span className="card-title">
-              <Zap size={16} style={{ color: 'var(--accent)' }} />
-              Continuous Workload Generator
-            </span>
-            <span className={`badge ${status?.is_running ? 'badge-success' : 'badge-neutral'}`}>
-              <span className="badge-dot" />
-              {status?.is_running ? 'RUNNING' : 'STOPPED'}
-            </span>
+            <span className="card-title">Workload generator</span>
+            <Badge variant={status?.is_running ? 'success' : 'neutral'}>
+              {status?.is_running ? 'Running' : 'Stopped'}
+            </Badge>
           </div>
 
           <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
-            Continuously dispatches synthetic transactions to stress-test queue throughput, worker leasing, and durable state updates.
+            Continuously dispatches test transactions to verify queue throughput, worker leasing, and state updates.
           </p>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
             <div>
-              <label>Rate (Runs / sec)</label>
+              <label>Rate (runs / sec)</label>
               <input 
                 type="number" 
                 min={1} 
@@ -181,7 +161,7 @@ export const DevTools = () => {
               />
             </div>
             <div>
-              <label>Max Concurrency</label>
+              <label>Max concurrency</label>
               <input 
                 type="number" 
                 min={1} 
@@ -195,7 +175,7 @@ export const DevTools = () => {
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--border-default)', paddingTop: '1rem' }}>
             <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
-              Total Spawned: <strong className="tabular-nums" style={{ color: 'var(--text-primary)' }}>{status?.total_runs_spawned ?? 0}</strong> runs
+              Total spawned: <strong className="tabular-nums" style={{ color: 'var(--text-primary)' }}>{status?.total_runs_spawned ?? 0}</strong>
             </div>
 
             {status?.is_running ? (
@@ -204,7 +184,7 @@ export const DevTools = () => {
                 onClick={() => stopMutation.mutate()}
                 disabled={stopMutation.isPending}
               >
-                <Square size={14} /> Stop Generator
+                Stop generator
               </button>
             ) : (
               <button 
@@ -212,7 +192,7 @@ export const DevTools = () => {
                 onClick={() => startMutation.mutate()}
                 disabled={startMutation.isPending}
               >
-                <Play size={14} /> Start Continuous Generator
+                Start generator
               </button>
             )}
           </div>
@@ -221,20 +201,17 @@ export const DevTools = () => {
         {/* Single Workflow Triggers */}
         <div className="card">
           <div className="card-header">
-            <span className="card-title">
-              <RotateCw size={16} style={{ color: 'var(--accent)' }} />
-              Trigger Individual Workflows
-            </span>
+            <span className="card-title">Individual workflows</span>
           </div>
 
           <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-            Execute specific deterministic scenarios to verify step execution, retries, error taxonomy, and AI tool calling:
+            Execute specific deterministic scenarios to verify step execution, error taxonomy, and AI tool calling:
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.625rem 0.75rem', backgroundColor: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }}>
               <div>
-                <div style={{ fontWeight: 600, fontSize: 'var(--font-size-sm)' }}>Multi-Step Order Fulfillment</div>
+                <div style={{ fontWeight: 600, fontSize: 'var(--font-size-sm)' }}>Multi-step order fulfillment</div>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>3 sequential steps: Validate inventory, charge payment, dispatch tracking.</div>
               </div>
               <button 
@@ -242,14 +219,13 @@ export const DevTools = () => {
                 disabled={triggering !== null}
                 onClick={() => triggerMutation.mutate('multi_step')}
               >
-                {triggering === 'multi_step' ? <RotateCw size={12} className="animate-spin" /> : <Play size={12} />}
-                Dispatch
+                {triggering === 'multi_step' ? 'Dispatching...' : 'Dispatch'}
               </button>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.625rem 0.75rem', backgroundColor: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }}>
               <div>
-                <div style={{ fontWeight: 600, fontSize: 'var(--font-size-sm)' }}>Bounded Retry (App Simulation)</div>
+                <div style={{ fontWeight: 600, fontSize: 'var(--font-size-sm)' }}>Bounded retry simulation</div>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Simulates application-level retry loop in user code. Engine retries/backoff are Planned (Phase 2).</div>
               </div>
               <button 
@@ -257,14 +233,13 @@ export const DevTools = () => {
                 disabled={triggering !== null}
                 onClick={() => triggerMutation.mutate('retry')}
               >
-                {triggering === 'retry' ? <RotateCw size={12} className="animate-spin" /> : <RotateCw size={12} />}
-                Dispatch
+                {triggering === 'retry' ? 'Dispatching...' : 'Dispatch'}
               </button>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.625rem 0.75rem', backgroundColor: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }}>
               <div>
-                <div style={{ fontWeight: 600, fontSize: 'var(--font-size-sm)' }}>Controlled Terminal Failure</div>
+                <div style={{ fontWeight: 600, fontSize: 'var(--font-size-sm)' }}>Controlled terminal failure</div>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Simulates non-recoverable error. Verifies failure classification & error payload.</div>
               </div>
               <button 
@@ -272,14 +247,13 @@ export const DevTools = () => {
                 disabled={triggering !== null}
                 onClick={() => triggerMutation.mutate('failure')}
               >
-                {triggering === 'failure' ? <RotateCw size={12} className="animate-spin" /> : <AlertTriangle size={12} style={{ color: 'var(--status-error)' }} />}
-                Dispatch
+                {triggering === 'failure' ? 'Dispatching...' : 'Dispatch'}
               </button>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.625rem 0.75rem', backgroundColor: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }}>
               <div>
-                <div style={{ fontWeight: 600, fontSize: 'var(--font-size-sm)' }}>AI Incident Triage Agent</div>
+                <div style={{ fontWeight: 600, fontSize: 'var(--font-size-sm)' }}>AI incident triage agent</div>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Runs agent loop with tool calls using deterministic local adapter.</div>
               </div>
               <button 
@@ -287,8 +261,7 @@ export const DevTools = () => {
                 disabled={triggering !== null}
                 onClick={() => triggerMutation.mutate('ai_agent')}
               >
-                {triggering === 'ai_agent' ? <RotateCw size={12} className="animate-spin" /> : <Bot size={12} style={{ color: 'var(--accent)' }} />}
-                Dispatch
+                {triggering === 'ai_agent' ? 'Dispatching...' : 'Dispatch'}
               </button>
             </div>
           </div>
@@ -296,21 +269,19 @@ export const DevTools = () => {
       </div>
 
       {/* Destructive Dev Reset Section */}
-      <div className="card" style={{ borderColor: 'var(--status-error-border)' }}>
+      <div className="card" style={{ borderColor: 'var(--border-default)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, color: 'var(--status-error)' }}>
-              <ShieldAlert size={16} />
-              Reset Development Workload Records
+            <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+              Reset Development Workloads
             </div>
             <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginTop: '2px' }}>
-              Purges synthetic test runs generated by this tool from the local database. Production workflows and audit logs remain untouched.
+              Purges test runs generated by this tool. Production workflows and audit logs remain untouched.
             </div>
           </div>
           <Button 
             variant="danger"
             size="md"
-            icon={<Trash2 size={14} />}
             onClick={() => setShowConfirmReset(true)}
           >
             Reset Dev Runs

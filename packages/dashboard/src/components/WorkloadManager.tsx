@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, type WorkloadStatusResponse } from '../api';
-import { PlayIcon, StopIcon, ReloadIcon, TrashIcon, LightningBoltIcon, MagicWandIcon, ExclamationTriangleIcon, CheckCircledIcon } from '@radix-ui/react-icons';
+import { ReloadIcon } from '@radix-ui/react-icons';
+import { Badge } from './ui/Badge';
 
 export const WorkloadManager = () => {
   const queryClient = useQueryClient();
@@ -51,7 +52,7 @@ export const WorkloadManager = () => {
     mutationFn: api.stopWorkloadGenerator,
     onSuccess: () => {
       refetchStatus();
-      setFeedback('Continuous generator stopped');
+      setFeedback('Generator stopped');
       setTimeout(() => setFeedback(null), 4000);
     }
   });
@@ -62,7 +63,7 @@ export const WorkloadManager = () => {
       setFeedback(`Cleaned up ${data.data?.cleaned_runs || 0} dev runs`);
       queryClient.invalidateQueries({ queryKey: ['runs'] });
       queryClient.invalidateQueries({ queryKey: ['overview'] });
-      setTimeout(() => setFeedback(null), 5000);
+      setTimeout(() => setFeedback(null), 4000);
     },
     onError: (err: any) => {
       setFeedback(`Cleanup failed: ${err.message}`);
@@ -71,48 +72,49 @@ export const WorkloadManager = () => {
   });
 
   return (
-    <div className="card" style={{ marginBottom: '1.5rem', background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, fontSize: 'var(--text-base)' }}>
-            <LightningBoltIcon width={16} height={16} color="var(--accent)" />
-            <span>Development Workload Generator</span>
-            <span className="badge badge-warning" style={{ fontSize: '10px' }}>DEV ONLY</span>
-          </div>
-          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginTop: '2px' }}>
-            Submit genuine workflows through the real engine pipeline to generate real operational telemetry.
-          </div>
+    <div className="card" style={{ marginBottom: '1.5rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+          <span style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>Dev workload generator</span>
+          <Badge variant={status?.is_running ? 'success' : 'neutral'}>
+            {status?.is_running ? 'Running' : 'Stopped'}
+          </Badge>
+          {status && (
+            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}>
+              ({status.rate_per_sec} r/s, {status.total_runs_spawned} spawned)
+            </span>
+          )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
           {status?.is_running ? (
             <button 
-              className="btn btn-secondary" 
-              onClick={() => stopMutation.mutate()} 
+              className="btn btn-danger" 
+              style={{ fontSize: 'var(--text-xs)', padding: '0.35rem 0.75rem' }}
+              onClick={() => stopMutation.mutate()}
               disabled={stopMutation.isPending}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--error)' }}
             >
-              <StopIcon width={14} height={14} /> Stop Generator
+              Stop generator
             </button>
           ) : (
             <button 
-              className="btn btn-secondary" 
-              onClick={() => startMutation.mutate()} 
+              className="btn btn-primary" 
+              style={{ fontSize: 'var(--text-xs)', padding: '0.35rem 0.75rem' }}
+              onClick={() => startMutation.mutate()}
               disabled={startMutation.isPending}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--success)' }}
             >
-              <PlayIcon width={14} height={14} /> Auto Generator (1/s)
+              Start generator
             </button>
           )}
 
           <button 
             className="btn btn-ghost" 
+            style={{ fontSize: 'var(--text-xs)', padding: '0.35rem 0.65rem' }}
             onClick={() => cleanupMutation.mutate()}
             disabled={cleanupMutation.isPending}
-            title="Clean dev workload runs"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-tertiary)' }}
+            title="Clean up test workflows and runs"
           >
-            <TrashIcon width={14} height={14} /> Reset Dev Runs
+            Reset dev data
           </button>
         </div>
       </div>
@@ -126,8 +128,8 @@ export const WorkloadManager = () => {
           disabled={triggering !== null}
           onClick={() => triggerMutation.mutate('multi_step')}
         >
-          {triggering === 'multi_step' ? <ReloadIcon className="animate-spin" width={12} height={12} /> : <CheckCircledIcon width={12} height={12} color="var(--success)" />}
-          &nbsp;Multi-Step
+          {triggering === 'multi_step' && <ReloadIcon className="animate-spin" width={12} height={12} />}
+          Multi-Step
         </button>
 
         <button 
@@ -136,8 +138,8 @@ export const WorkloadManager = () => {
           disabled={triggering !== null}
           onClick={() => triggerMutation.mutate('retry')}
         >
-          {triggering === 'retry' ? <ReloadIcon className="animate-spin" width={12} height={12} /> : <ReloadIcon width={12} height={12} color="var(--warning)" />}
-          &nbsp;Bounded Retry
+          {triggering === 'retry' && <ReloadIcon className="animate-spin" width={12} height={12} />}
+          Bounded Retry
         </button>
 
         <button 
@@ -146,8 +148,8 @@ export const WorkloadManager = () => {
           disabled={triggering !== null}
           onClick={() => triggerMutation.mutate('failure')}
         >
-          {triggering === 'failure' ? <ReloadIcon className="animate-spin" width={12} height={12} /> : <ExclamationTriangleIcon width={12} height={12} color="var(--error)" />}
-          &nbsp;Controlled Failure
+          {triggering === 'failure' && <ReloadIcon className="animate-spin" width={12} height={12} />}
+          Controlled Failure
         </button>
 
         <button 
@@ -156,8 +158,8 @@ export const WorkloadManager = () => {
           disabled={triggering !== null}
           onClick={() => triggerMutation.mutate('delayed')}
         >
-          {triggering === 'delayed' ? <ReloadIcon className="animate-spin" width={12} height={12} /> : <LightningBoltIcon width={12} height={12} color="var(--accent)" />}
-          &nbsp;Delayed Step
+          {triggering === 'delayed' && <ReloadIcon className="animate-spin" width={12} height={12} />}
+          Delayed Step
         </button>
 
         <button 
@@ -166,13 +168,13 @@ export const WorkloadManager = () => {
           disabled={triggering !== null}
           onClick={() => triggerMutation.mutate('ai_agent')}
         >
-          {triggering === 'ai_agent' ? <ReloadIcon className="animate-spin" width={12} height={12} /> : <MagicWandIcon width={12} height={12} color="var(--accent)" />}
-          &nbsp;AI Incident Triage Agent
+          {triggering === 'ai_agent' && <ReloadIcon className="animate-spin" width={12} height={12} />}
+          AI Agent
         </button>
       </div>
 
       {feedback && (
-        <div style={{ marginTop: '0.75rem', fontSize: 'var(--text-xs)', color: feedback.startsWith('Error') || feedback.startsWith('Cleanup failed') ? 'var(--error)' : 'var(--success)', fontWeight: 500 }}>
+        <div style={{ marginTop: '0.75rem', fontSize: 'var(--text-xs)', color: feedback.startsWith('Error') || feedback.startsWith('Cleanup failed') ? 'var(--status-error)' : 'var(--status-success)', fontWeight: 500 }}>
           {feedback}
         </div>
       )}

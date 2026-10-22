@@ -1,17 +1,13 @@
+use crate::{auth::AuthenticatedTenant, error::ApiError, server::AppState};
+use axiom_core::{RunId, WorkflowId};
+use axiom_storage::models::{WorkflowRow, WorkflowRunRow};
+use axiom_storage::traits::{AuditRepository, RunRepository, WorkflowRepository};
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, Query, State},
     Json,
 };
-use serde::{Deserialize, Serialize};
-use axiom_core::{WorkflowId, RunId};
-use crate::{
-    server::AppState,
-    error::ApiError,
-    auth::AuthenticatedTenant,
-};
-use axiom_storage::models::{WorkflowRow, WorkflowRunRow};
-use axiom_storage::traits::{WorkflowRepository, RunRepository, AuditRepository};
 use chrono::Utc;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Deserialize)]
@@ -33,11 +29,36 @@ pub async fn register_workflow(
     State(state): State<AppState>,
     Json(payload): Json<RegisterWorkflowReq>,
 ) -> Result<Json<ApiData<WorkflowRow>>, ApiError> {
+    let is_disabled = std::env::var("AXIOM_RATE_LIMIT_DISABLED")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+
+    let limit_per_min: u32 = std::env::var("AXIOM_RATE_LIMIT_WORKFLOWS_PER_MIN")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(100);
+
+    if !is_disabled && limit_per_min > 0 {
+        let refill_per_sec = limit_per_min / 60;
+        if !state
+            .rate_limiter
+            .check_and_consume_keyed(tenant_id.0, "workflows", limit_per_min, refill_per_sec)
+        {
+            return Err(ApiError::RateLimited);
+        }
+    }
+
     if payload.name.trim().is_empty() {
-        return Err(ApiError::Validation("Workflow name cannot be empty".into(), vec![]));
+        return Err(ApiError::Validation(
+            "Workflow name cannot be empty".into(),
+            vec![],
+        ));
     }
     if payload.name.len() > 100 {
-        return Err(ApiError::Validation("Workflow name too long".into(), vec![]));
+        return Err(ApiError::Validation(
+            "Workflow name too long".into(),
+            vec![],
+        ));
     }
 
     let workflow = WorkflowRow {
@@ -54,18 +75,24 @@ pub async fn register_workflow(
         updated_at: Utc::now(),
     };
 
-    let created = state.db.create_workflow(workflow.clone()).await
+    let created = state
+        .db
+        .create_workflow(workflow.clone())
+        .await
         .map_err(|e| ApiError::Internal(e.into()))?;
 
-    let _ = state.db.append_audit_log(axiom_storage::models::AuditLogRow {
-        id: Uuid::new_v4(),
-        tenant_id: tenant_id.clone(),
-        action: "WorkflowRegistered".to_string(),
-        resource_type: "Workflow".to_string(),
-        resource_id: Some(created.id.0.to_string()),
-        correlation_id: None,
-        created_at: Utc::now(),
-    }).await;
+    let _ = state
+        .db
+        .append_audit_log(axiom_storage::models::AuditLogRow {
+            id: Uuid::new_v4(),
+            tenant_id: tenant_id.clone(),
+            action: "WorkflowRegistered".to_string(),
+            resource_type: "Workflow".to_string(),
+            resource_id: Some(created.id.0.to_string()),
+            correlation_id: None,
+            created_at: Utc::now(),
+        })
+        .await;
 
     Ok(Json(ApiData { data: created }))
 }
@@ -98,19 +125,26 @@ pub async fn list_workflows(
     let limit = query.limit.unwrap_or(20).min(100) as i64;
     // For Phase 1 we will just ignore the cursor and offset and always fetch the first page,
     // or parse the cursor as an offset if provided.
-    let offset: i64 = query.cursor.as_deref().and_then(|c| c.parse().ok()).unwrap_or(0);
+    let offset: i64 = query
+        .cursor
+        .as_deref()
+        .and_then(|c| c.parse().ok())
+        .unwrap_or(0);
 
-    let rows = state.db.list_workflows(tenant_id, limit + 1, offset, query.name.clone()).await
+    let rows = state
+        .db
+        .list_workflows(tenant_id, limit + 1, offset, query.name.clone())
+        .await
         .map_err(|e| ApiError::Internal(e.into()))?;
 
     let mut has_more = false;
     let mut data = rows;
-    
+
     if data.len() > limit as usize {
         has_more = true;
         data.pop();
     }
-    
+
     let next_cursor = if has_more {
         Some((offset + limit).to_string())
     } else {
@@ -145,8 +179,12 @@ pub async fn get_workflow(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<Json<ApiData<WorkflowDetailData>>, ApiError> {
-    let workflow_uuid = Uuid::parse_str(&id).map_err(|_| ApiError::NotFound("Invalid workflow ID".into()))?;
-    let wf = state.db.get_workflow(WorkflowId(workflow_uuid)).await
+    let workflow_uuid =
+        Uuid::parse_str(&id).map_err(|_| ApiError::NotFound("Invalid workflow ID".into()))?;
+    let wf = state
+        .db
+        .get_workflow(WorkflowId(workflow_uuid))
+        .await
         .map_err(|e| ApiError::Internal(e.into()))?;
 
     let wf = wf.ok_or_else(|| ApiError::NotFound("Workflow not found".into()))?;
@@ -156,7 +194,10 @@ pub async fn get_workflow(
     }
 
     // Stats from DB
-    let stats = state.db.get_workflow_stats(tenant_id, wf.id).await
+    let stats = state
+        .db
+        .get_workflow_stats(tenant_id, wf.id)
+        .await
         .unwrap_or_else(|_| axiom_core::ExecutionAnalytics {
             total_runs: 0,
             active_runs: 0,
@@ -194,8 +235,31 @@ pub async fn start_run(
     Path(id): Path<String>,
     Json(payload): Json<StartRunReq>,
 ) -> Result<Json<ApiData<WorkflowRunRow>>, ApiError> {
-    let workflow_uuid = Uuid::parse_str(&id).map_err(|_| ApiError::NotFound("Invalid workflow ID".into()))?;
-    let wf = state.db.get_workflow(WorkflowId(workflow_uuid)).await
+    let is_disabled = std::env::var("AXIOM_RATE_LIMIT_DISABLED")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+
+    let limit_per_min: u32 = std::env::var("AXIOM_RATE_LIMIT_RUNS_PER_MIN")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(1000);
+
+    if !is_disabled && limit_per_min > 0 {
+        let refill_per_sec = limit_per_min / 60;
+        if !state
+            .rate_limiter
+            .check_and_consume_keyed(tenant_id.0, "runs", limit_per_min, refill_per_sec)
+        {
+            return Err(ApiError::RateLimited);
+        }
+    }
+
+    let workflow_uuid =
+        Uuid::parse_str(&id).map_err(|_| ApiError::NotFound("Invalid workflow ID".into()))?;
+    let wf = state
+        .db
+        .get_workflow(WorkflowId(workflow_uuid))
+        .await
         .map_err(|e| ApiError::Internal(e.into()))?;
 
     let wf = wf.ok_or_else(|| ApiError::NotFound("Workflow not found".into()))?;
@@ -205,12 +269,18 @@ pub async fn start_run(
     }
 
     if let Some(key) = &payload.idempotency_key {
-        if let Ok(Some(existing_run)) = state.db.get_run_by_idempotency_key(tenant_id.clone(), key).await {
+        if let Ok(Some(existing_run)) = state
+            .db
+            .get_run_by_idempotency_key(tenant_id.clone(), key)
+            .await
+        {
             // Found an existing run with this idempotency key.
             // Strict check: if input differs, 409 Conflict.
             let inputs_match = existing_run.input == payload.input;
             if !inputs_match {
-                return Err(ApiError::Conflict("Idempotency key already used with a different input".into()));
+                return Err(ApiError::Conflict(
+                    "Idempotency key already used with a different input".into(),
+                ));
             }
             return Ok(Json(ApiData { data: existing_run }));
         }
@@ -242,12 +312,15 @@ pub async fn start_run(
         completed_at: None,
     };
 
-    let created = state.db.create_run(run.clone()).await
+    let created = state
+        .db
+        .create_run(run.clone())
+        .await
         .map_err(|e| ApiError::Internal(e.into()))?;
 
-    let span = tracing::info_span!("start_run", 
-        run_id = %created.id.0, 
-        workflow_id = %workflow_uuid, 
+    let span = tracing::info_span!("start_run",
+        run_id = %created.id.0,
+        workflow_id = %workflow_uuid,
         correlation_id = ?created.correlation_id,
         tenant_id = %tenant_id.0
     );
@@ -258,17 +331,20 @@ pub async fn start_run(
         metrics::gauge!("axiom_active_workflow_runs").increment(1.0);
     }
 
-    let _ = state.db.append_audit_log(axiom_storage::models::AuditLogRow {
-        id: Uuid::new_v4(),
-        tenant_id: tenant_id.clone(),
-        action: "RunStarted".to_string(),
-        resource_type: "WorkflowRun".to_string(),
-        resource_id: Some(created.id.0.to_string()),
-        correlation_id: created.correlation_id.clone(),
-        created_at: Utc::now(),
-    }).await;
+    let _ = state
+        .db
+        .append_audit_log(axiom_storage::models::AuditLogRow {
+            id: Uuid::new_v4(),
+            tenant_id: tenant_id.clone(),
+            action: "RunStarted".to_string(),
+            resource_type: "WorkflowRun".to_string(),
+            resource_id: Some(created.id.0.to_string()),
+            correlation_id: created.correlation_id.clone(),
+            created_at: Utc::now(),
+        })
+        .await;
 
     // In a full implementation, we'd also emit a WorkflowStarted event here or let the scheduler do it.
-    
+
     Ok(Json(ApiData { data: created }))
 }

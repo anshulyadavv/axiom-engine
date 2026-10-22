@@ -3,8 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { formatDistanceToNow } from 'date-fns';
-import { Clock, ArrowUpRight, Play } from 'lucide-react';
-import { PageHeader, Button, SearchInput, EmptyState, Badge } from '../components/ui';
+import { ArrowRight } from 'lucide-react';
+import { PageHeader, Button, SearchInput, EmptyState, Badge, type BadgeVariant } from '../components/ui';
 
 export const RunsList = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -35,15 +35,25 @@ export const RunsList = () => {
     setSearchParams(searchParams);
   };
 
+  const getStatusDetails = (status: string): { variant: BadgeVariant; label: string } => {
+    switch (status) {
+      case 'completed': return { variant: 'success', label: 'Completed' };
+      case 'failed': return { variant: 'error', label: 'Failed' };
+      case 'cancelled': return { variant: 'warning', label: 'Cancelled' };
+      case 'running': return { variant: 'info', label: 'Running' };
+      default: return { variant: 'neutral', label: status.charAt(0).toUpperCase() + status.slice(1) };
+    }
+  };
+
   return (
     <div className="page-container">
       {/* Header */}
       <PageHeader
         title="Executions"
-        description="Searchable execution log, active runs, and durable checkpoint records."
+        description="Searchable execution log and checkpoint records."
         actions={
           <Link to="/workflows">
-            <Button variant="primary" size="sm" icon={<Play size={14} />}>
+            <Button variant="primary" size="sm">
               Submit Workflow
             </Button>
           </Link>
@@ -78,9 +88,10 @@ export const RunsList = () => {
       <div className="table-wrapper">
         <div className="table-header-bar">
           <div className="table-header-title">
-            <Clock size={16} style={{ color: 'var(--accent)' }} />
             <span>Workflow Executions</span>
-            <Badge variant="neutral">{filteredRuns.length} total</Badge>
+            {filteredRuns.length > 0 && (
+              <Badge variant="neutral">{filteredRuns.length} runs</Badge>
+            )}
           </div>
         </div>
 
@@ -100,7 +111,7 @@ export const RunsList = () => {
                   <Button variant="secondary" size="sm" onClick={() => handleStatusChange('all')}>Show All Runs</Button>
                 ) : (
                   <Link to="/workflows">
-                    <Button variant="primary" size="sm" icon={<Play size={14} />}>Start an Execution</Button>
+                    <Button variant="primary" size="sm">Start an Execution</Button>
                   </Link>
                 )
               }
@@ -112,19 +123,15 @@ export const RunsList = () => {
                   <th>Workflow</th>
                   <th>Run ID</th>
                   <th>Status</th>
-                  <th>Duration</th>
-                  <th>Attempts</th>
+                  <th style={{ textAlign: 'right' }}>Duration</th>
+                  <th style={{ textAlign: 'right' }}>Attempts</th>
                   <th>Started</th>
-                  <th>Actions</th>
+                  <th style={{ textAlign: 'right' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRuns.map((run: any) => {
-                  let badgeVariant: 'success' | 'error' | 'warning' | 'info' = 'info';
-                  if (run.status === 'completed') badgeVariant = 'success';
-                  if (run.status === 'failed') badgeVariant = 'error';
-                  if (run.status === 'cancelled') badgeVariant = 'warning';
-
+                  const statusInfo = getStatusDetails(run.status);
                   const duration = run.completed_at && (run.started_at || run.created_at)
                     ? new Date(run.completed_at).getTime() - new Date(run.started_at || run.created_at).getTime()
                     : null;
@@ -142,14 +149,14 @@ export const RunsList = () => {
                         </Link>
                       </td>
                       <td>
-                        <Badge variant={badgeVariant} dot>
-                          {run.status}
+                        <Badge variant={statusInfo.variant}>
+                          {statusInfo.label}
                         </Badge>
                       </td>
-                      <td className="tabular-nums" style={{ color: 'var(--text-secondary)' }}>
+                      <td className="tabular-nums" style={{ textAlign: 'right', color: 'var(--text-secondary)' }}>
                         {duration != null ? `${duration}ms` : '—'}
                       </td>
-                      <td className="tabular-nums" style={{ color: 'var(--text-secondary)' }}>
+                      <td className="tabular-nums" style={{ textAlign: 'right', color: 'var(--text-secondary)' }}>
                         {run.attempts ?? 1}
                       </td>
                       <td className="tabular-nums" style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
@@ -157,9 +164,9 @@ export const RunsList = () => {
                           ? formatDistanceToNow(new Date(run.started_at || run.created_at), { addSuffix: true }) 
                           : '—'}
                       </td>
-                      <td>
+                      <td style={{ textAlign: 'right' }}>
                         <Link to={`/runs/${run.id}`}>
-                          <Button variant="ghost" size="sm" icon={<ArrowUpRight size={12} />}>
+                          <Button variant="ghost" size="sm" iconRight={<ArrowRight size={12} className="link-arrow" />}>
                             Inspect
                           </Button>
                         </Link>

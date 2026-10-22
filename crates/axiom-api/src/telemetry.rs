@@ -68,20 +68,31 @@ impl TelemetryHub {
         if matches!(event.category, EventCategory::AiAgent) {
             match event.event_type.as_str() {
                 "ai_agent_invoked" => {
-                    self.ai_invocations.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    self.ai_invocations
+                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 }
                 "ai_tool_outcome" => {
-                    self.ai_tool_calls.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    self.ai_tool_calls
+                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                     if event.metadata.get("success").and_then(|v| v.as_bool()) == Some(false) {
-                        self.ai_tool_failures.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        self.ai_tool_failures
+                            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                     }
                 }
                 "ai_agent_completed" => {
-                    if let Some(tokens) = event.metadata.get("total_tokens").and_then(|v| v.as_u64()) {
-                        self.ai_total_tokens.fetch_add(tokens, std::sync::atomic::Ordering::Relaxed);
+                    if let Some(tokens) =
+                        event.metadata.get("total_tokens").and_then(|v| v.as_u64())
+                    {
+                        self.ai_total_tokens
+                            .fetch_add(tokens, std::sync::atomic::Ordering::Relaxed);
                     }
-                    if let Some(latency) = event.metadata.get("model_latency_ms").and_then(|v| v.as_u64()) {
-                        self.ai_total_latency_ms.fetch_add(latency, std::sync::atomic::Ordering::Relaxed);
+                    if let Some(latency) = event
+                        .metadata
+                        .get("model_latency_ms")
+                        .and_then(|v| v.as_u64())
+                    {
+                        self.ai_total_latency_ms
+                            .fetch_add(latency, std::sync::atomic::Ordering::Relaxed);
                     }
                 }
                 _ => {}
@@ -146,11 +157,21 @@ impl TelemetryHub {
 
     /// Get cumulative AI telemetry stats.
     pub fn get_ai_metrics(&self) -> serde_json::Value {
-        let invocations = self.ai_invocations.load(std::sync::atomic::Ordering::Relaxed);
-        let tool_calls = self.ai_tool_calls.load(std::sync::atomic::Ordering::Relaxed);
-        let tool_failures = self.ai_tool_failures.load(std::sync::atomic::Ordering::Relaxed);
-        let total_tokens = self.ai_total_tokens.load(std::sync::atomic::Ordering::Relaxed);
-        let total_lat = self.ai_total_latency_ms.load(std::sync::atomic::Ordering::Relaxed);
+        let invocations = self
+            .ai_invocations
+            .load(std::sync::atomic::Ordering::Relaxed);
+        let tool_calls = self
+            .ai_tool_calls
+            .load(std::sync::atomic::Ordering::Relaxed);
+        let tool_failures = self
+            .ai_tool_failures
+            .load(std::sync::atomic::Ordering::Relaxed);
+        let total_tokens = self
+            .ai_total_tokens
+            .load(std::sync::atomic::Ordering::Relaxed);
+        let total_lat = self
+            .ai_total_latency_ms
+            .load(std::sync::atomic::Ordering::Relaxed);
 
         let avg_latency_ms = if invocations > 0 {
             Some((total_lat as f64) / (invocations as f64))
@@ -166,7 +187,8 @@ impl TelemetryHub {
 
         let active_provider = std::env::var("AI_PROVIDER")
             .unwrap_or_else(|_| "local-deterministic-adapter".to_string());
-        let is_test_adapter = active_provider == "local-deterministic-adapter" || active_provider.contains("test");
+        let is_test_adapter =
+            active_provider == "local-deterministic-adapter" || active_provider.contains("test");
 
         serde_json::json!({
             "invocations": invocations,

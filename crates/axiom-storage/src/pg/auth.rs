@@ -1,7 +1,7 @@
-use async_trait::async_trait;
-use axiom_core::{TenantId, Result};
 use crate::traits::AuthRepository;
 use crate::Database;
+use async_trait::async_trait;
+use axiom_core::{Result, TenantId};
 
 #[async_trait]
 impl AuthRepository for Database {
@@ -12,7 +12,7 @@ impl AuthRepository for Database {
             SELECT tenant_id 
             FROM tenant_api_keys 
             WHERE key_hash = $1 AND is_active = true
-            "#
+            "#,
         )
         .bind(key_hash)
         .fetch_optional(&self.pool)
@@ -25,7 +25,10 @@ impl AuthRepository for Database {
         }))
     }
 
-    async fn create_api_key(&self, key: crate::models::ApiKeyRow) -> Result<crate::models::ApiKeyRow> {
+    async fn create_api_key(
+        &self,
+        key: crate::models::ApiKeyRow,
+    ) -> Result<crate::models::ApiKeyRow> {
         let _ = sqlx::query(
             r#"
             INSERT INTO tenant_api_keys (key_id, tenant_id, key_hash, description, is_active, created_at)
@@ -52,7 +55,7 @@ impl AuthRepository for Database {
             FROM tenant_api_keys
             WHERE tenant_id = $1
             ORDER BY created_at DESC
-            "#
+            "#,
         )
         .bind(&tenant_id.0)
         .fetch_all(&self.pool)
@@ -80,7 +83,7 @@ impl AuthRepository for Database {
             UPDATE tenant_api_keys
             SET is_active = false, revoked_at = NOW()
             WHERE tenant_id = $1 AND key_id = $2 AND is_active = true
-            "#
+            "#,
         )
         .bind(&tenant_id.0)
         .bind(key_id)

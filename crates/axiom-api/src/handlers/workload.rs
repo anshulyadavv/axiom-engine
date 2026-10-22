@@ -76,13 +76,17 @@ async fn ensure_workflow_registered(
     tenant_id: TenantId,
     workflow_name: &str,
 ) -> Result<WorkflowRow, ApiError> {
-    if let Ok(Some(existing)) = state.db.get_workflow_by_name(tenant_id.clone(), workflow_name, 1).await {
+    if let Ok(Some(existing)) = state
+        .db
+        .get_workflow_by_name(tenant_id.clone(), workflow_name, 1)
+        .await
+    {
         return Ok(existing);
     }
 
     let description = match workflow_name {
         "multi_step_flow" => "Real multi-step calculation and summary pipeline",
-        "retry_flow" => "Workflow with controlled bounded retry via durable state",
+        "retry_flow" => "Application-level retry simulation (Engine retries Planned Phase 2)",
         "failing_flow" => "Workflow demonstrating controlled failure observability",
         "delayed_flow" => "Workflow performing bounded sleep delay",
         "incident_triage_agent" => "Real AI-agent workflow triaging operational incidents",
@@ -103,11 +107,17 @@ async fn ensure_workflow_registered(
         updated_at: Utc::now(),
     };
 
-    let created = state.db.create_workflow(wf.clone()).await
+    let created = state
+        .db
+        .create_workflow(wf.clone())
+        .await
         .map_err(|e| ApiError::Internal(e.into()))?;
 
     // Invalidate cache and emit event
-    state.cache.delete(&format!("wf:{}:{}", tenant_id.0, workflow_name)).await;
+    state
+        .cache
+        .delete(&format!("wf:{}:{}", tenant_id.0, workflow_name))
+        .await;
     state.telemetry.emit(OperationalEvent {
         event_id: Uuid::new_v4(),
         timestamp: Utc::now(),
@@ -138,9 +148,13 @@ pub async fn submit_single_workload(
     let correlation_id = format!("dev-workload-{}-{}", workload_type, Uuid::new_v4());
 
     let input = match workload_type {
-        "multi_step_flow" => serde_json::json!({ "baseNumber": 42 + (rand::random::<u16>() % 500) }),
+        "multi_step_flow" => {
+            serde_json::json!({ "baseNumber": 42 + (rand::random::<u16>() % 500) })
+        }
         "retry_flow" => serde_json::json!({ "simulateRecovery": true, "maxRetries": 3 }),
-        "failing_flow" => serde_json::json!({ "errorMessage": "PaymentGatewayTimeout: upstream 504 on capture step" }),
+        "failing_flow" => {
+            serde_json::json!({ "errorMessage": "PaymentGatewayTimeout: upstream 504 on capture step" })
+        }
         "delayed_flow" => serde_json::json!({ "durationMs": 2500 }),
         "incident_triage_agent" => serde_json::json!({
             "incidentId": format!("inc-{}", Uuid::new_v4()),
@@ -176,11 +190,17 @@ pub async fn submit_single_workload(
         completed_at: None,
     };
 
-    let created_run = state.db.create_run(run).await
+    let created_run = state
+        .db
+        .create_run(run)
+        .await
         .map_err(|e| ApiError::Internal(e.into()))?;
 
     // Invalidate cached overview stats
-    state.cache.delete(&format!("overview:stats:{}", tenant_id.0)).await;
+    state
+        .cache
+        .delete(&format!("overview:stats:{}", tenant_id.0))
+        .await;
 
     // Emit live telemetry event
     state.telemetry.emit(OperationalEvent {
@@ -210,8 +230,14 @@ pub async fn get_status(
     State(state): State<AppState>,
 ) -> Result<Json<ApiData<WorkloadStatusResp>>, ApiError> {
     let is_running = state.workload_generator.is_running.load(Ordering::Relaxed);
-    let submitted_count = state.workload_generator.submitted_count.load(Ordering::Relaxed);
-    let failed_count = state.workload_generator.failed_count.load(Ordering::Relaxed);
+    let submitted_count = state
+        .workload_generator
+        .submitted_count
+        .load(Ordering::Relaxed);
+    let failed_count = state
+        .workload_generator
+        .failed_count
+        .load(Ordering::Relaxed);
     let active_type = state.workload_generator.active_type.lock().unwrap().clone();
 
     Ok(Json(ApiData {
@@ -237,13 +263,19 @@ pub async fn trigger_single(
 ) -> Result<Json<ApiData<WorkflowRunRow>>, ApiError> {
     if !SUPPORTED_WORKLOAD_TYPES.contains(&payload.workload_type.as_str()) {
         return Err(ApiError::Validation(
-            format!("Invalid workload_type. Supported types: {:?}", SUPPORTED_WORKLOAD_TYPES),
+            format!(
+                "Invalid workload_type. Supported types: {:?}",
+                SUPPORTED_WORKLOAD_TYPES
+            ),
             vec![],
         ));
     }
 
     let run = submit_single_workload(&state, user.tenant_id, &payload.workload_type).await?;
-    state.workload_generator.submitted_count.fetch_add(1, Ordering::Relaxed);
+    state
+        .workload_generator
+        .submitted_count
+        .fetch_add(1, Ordering::Relaxed);
 
     Ok(Json(ApiData { data: run }))
 }
@@ -253,10 +285,15 @@ pub async fn start_generator(
     State(state): State<AppState>,
     Json(payload): Json<StartWorkloadReq>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    let w_type = payload.workload_type.unwrap_or_else(|| "multi_step_flow".to_string());
+    let w_type = payload
+        .workload_type
+        .unwrap_or_else(|| "multi_step_flow".to_string());
     if !SUPPORTED_WORKLOAD_TYPES.contains(&w_type.as_str()) {
         return Err(ApiError::Validation(
-            format!("Invalid workload_type. Supported types: {:?}", SUPPORTED_WORKLOAD_TYPES),
+            format!(
+                "Invalid workload_type. Supported types: {:?}",
+                SUPPORTED_WORKLOAD_TYPES
+            ),
             vec![],
         ));
     }
@@ -264,7 +301,10 @@ pub async fn start_generator(
     let rate = payload.rate_per_minute.unwrap_or(12).clamp(1, 60);
     let total_limit = payload.total_runs.unwrap_or(50).clamp(1, 500);
 
-    state.workload_generator.is_running.store(true, Ordering::Relaxed);
+    state
+        .workload_generator
+        .is_running
+        .store(true, Ordering::Relaxed);
     *state.workload_generator.active_type.lock().unwrap() = Some(w_type.clone());
 
     let state_clone = state.clone();
@@ -277,27 +317,46 @@ pub async fn start_generator(
 
         tracing::info!(
             "Starting development workload generator: type={}, rate={}/min, limit={}",
-            w_type_clone, rate, total_limit
+            w_type_clone,
+            rate,
+            total_limit
         );
 
-        while state_clone.workload_generator.is_running.load(Ordering::Relaxed) && submitted < total_limit {
+        while state_clone
+            .workload_generator
+            .is_running
+            .load(Ordering::Relaxed)
+            && submitted < total_limit
+        {
             match submit_single_workload(&state_clone, tenant_id.clone(), &w_type_clone).await {
                 Ok(_) => {
-                    state_clone.workload_generator.submitted_count.fetch_add(1, Ordering::Relaxed);
+                    state_clone
+                        .workload_generator
+                        .submitted_count
+                        .fetch_add(1, Ordering::Relaxed);
                     submitted += 1;
                 }
                 Err(e) => {
                     tracing::error!("Workload generator submission failed: {:?}", e);
-                    state_clone.workload_generator.failed_count.fetch_add(1, Ordering::Relaxed);
+                    state_clone
+                        .workload_generator
+                        .failed_count
+                        .fetch_add(1, Ordering::Relaxed);
                 }
             }
 
             tokio::time::sleep(Duration::from_millis(interval_ms)).await;
         }
 
-        state_clone.workload_generator.is_running.store(false, Ordering::Relaxed);
+        state_clone
+            .workload_generator
+            .is_running
+            .store(false, Ordering::Relaxed);
         *state_clone.workload_generator.active_type.lock().unwrap() = None;
-        tracing::info!("Development workload generator finished. Submitted: {}", submitted);
+        tracing::info!(
+            "Development workload generator finished. Submitted: {}",
+            submitted
+        );
     });
 
     Ok(Json(serde_json::json!({
@@ -312,7 +371,10 @@ pub async fn stop_generator(
     RequireAdmin(_user): RequireAdmin,
     State(state): State<AppState>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    state.workload_generator.is_running.store(false, Ordering::Relaxed);
+    state
+        .workload_generator
+        .is_running
+        .store(false, Ordering::Relaxed);
     *state.workload_generator.active_type.lock().unwrap() = None;
     Ok(Json(serde_json::json!({ "status": "stopped" })))
 }
@@ -331,7 +393,10 @@ pub async fn cleanup_dev_workloads(
     .map_err(|e| ApiError::Internal(e.into()))?;
 
     // Invalidate caches
-    state.cache.delete(&format!("overview:stats:{}", user.tenant_id.0)).await;
+    state
+        .cache
+        .delete(&format!("overview:stats:{}", user.tenant_id.0))
+        .await;
 
     Ok(Json(serde_json::json!({
         "status": "cleaned",

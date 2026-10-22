@@ -88,41 +88,65 @@ function getHeaders() {
 export const api = {
   getOverview: async () => {
     const baseUrl = getApiConfig().url.replace(/\/v1\/?$/, '');
-    let health = { postgres: 'unknown', nats: 'unknown', workers: 0 };
+    let apiReachable = true;
+    let postgresStatus: 'Healthy' | 'Unreachable' | 'Not checked' = 'Not checked';
+    let natsStatus: 'Healthy' | 'Unreachable' | 'Not checked' = 'Not checked';
+    let activeWorkers = 0;
+
     try {
       const res = await fetch(`${baseUrl}/ready`);
       if (res.ok) {
         const data = await res.json();
-        health.postgres = data.checks?.postgres || 'ok';
-        health.nats = data.checks?.nats || 'ok';
+        postgresStatus = data.checks?.postgres === 'ok' ? 'Healthy' : 'Unreachable';
+        natsStatus = data.checks?.nats === 'ok' ? 'Healthy' : 'Unreachable';
+      } else {
+        postgresStatus = 'Unreachable';
+        natsStatus = 'Unreachable';
+        apiReachable = false;
       }
-    } catch (e) {
-      console.warn("Failed to fetch /ready", e);
+    } catch {
+      postgresStatus = 'Unreachable';
+      natsStatus = 'Unreachable';
+      apiReachable = false;
     }
     
     let activeRuns = 0;
     let last24h = { started: 0, completed: 0, failed: 0 };
     let avgDurationMs: number | null = null;
     let successRatePct: number | null = null;
-    try {
-      const statsRes = await fetch(`${getApiConfig().url}/overview/stats`, { headers: getHeaders() });
-      if (statsRes.ok) {
-        const statsData = await statsRes.json();
-        activeRuns = statsData.data.active_runs;
-        last24h.completed = statsData.data.last_24h_completed;
-        last24h.failed = statsData.data.last_24h_failed;
-        health.workers = statsData.data.active_workers;
-        avgDurationMs = statsData.data.avg_duration_ms ?? null;
-        successRatePct = statsData.data.success_rate_pct ?? null;
+    let statsAvailable = apiReachable;
+
+    if (apiReachable) {
+      try {
+        const statsRes = await fetch(`${getApiConfig().url}/overview/stats`, { headers: getHeaders() });
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          activeRuns = statsData.data.active_runs;
+          last24h.completed = statsData.data.last_24h_completed;
+          last24h.failed = statsData.data.last_24h_failed;
+          activeWorkers = statsData.data.active_workers;
+          avgDurationMs = statsData.data.avg_duration_ms ?? null;
+          successRatePct = statsData.data.success_rate_pct ?? null;
+        } else {
+          statsAvailable = false;
+        }
+      } catch (e) {
+        console.warn("Failed to fetch overview stats", e);
+        statsAvailable = false;
       }
-    } catch (e) {
-      console.warn("Failed to fetch overview stats", e);
     }
     
     return {
       activeRuns,
       last24h,
-      systemHealth: health,
+      systemHealth: {
+        postgres: postgresStatus,
+        nats: natsStatus,
+        workers: activeWorkers,
+        apiReachable,
+        apiUrl: baseUrl,
+      },
+      statsAvailable,
       avgDurationMs,
       successRatePct,
     };

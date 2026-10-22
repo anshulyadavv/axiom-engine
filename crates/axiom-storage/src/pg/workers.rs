@@ -1,6 +1,6 @@
+use crate::{models::WorkerRow, traits::WorkerRepository, Database};
 use async_trait::async_trait;
-use axiom_core::{TenantId, Result};
-use crate::{Database, models::WorkerRow, traits::WorkerRepository};
+use axiom_core::{Result, TenantId};
 
 #[async_trait]
 impl WorkerRepository for Database {
@@ -12,7 +12,7 @@ impl WorkerRepository for Database {
             WHERE tenant_id = $1 OR tenant_id IS NULL
             ORDER BY last_heartbeat DESC
             LIMIT 100
-            "#
+            "#,
         )
         .bind(tenant_id)
         .fetch_all(&self.pool)
@@ -22,14 +22,19 @@ impl WorkerRepository for Database {
         Ok(rows)
     }
 
-    async fn register_worker(&self, id: &str, tenant_id: Option<TenantId>, metadata: serde_json::Value) -> Result<()> {
+    async fn register_worker(
+        &self,
+        id: &str,
+        tenant_id: Option<TenantId>,
+        metadata: serde_json::Value,
+    ) -> Result<()> {
         sqlx::query(
             r#"
             INSERT INTO workers (id, tenant_id, status, last_heartbeat, metadata, registered_at)
             VALUES ($1, $2, 'active', now(), $3, now())
             ON CONFLICT (id) DO UPDATE
             SET status = 'active', last_heartbeat = now(), metadata = $3
-            "#
+            "#,
         )
         .bind(id)
         .bind(tenant_id)
@@ -47,7 +52,7 @@ impl WorkerRepository for Database {
             UPDATE workers
             SET last_heartbeat = now(), status = 'active'
             WHERE id = $1
-            "#
+            "#,
         )
         .bind(id)
         .execute(&self.pool)

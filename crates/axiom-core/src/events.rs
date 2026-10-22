@@ -37,17 +37,48 @@ pub struct Event {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data")]
 pub enum SemanticEvent {
-    WorkflowStarted { input: serde_json::Value },
-    WorkflowCompleted { output: serde_json::Value },
-    WorkflowFailed { error: serde_json::Value },
-    WorkflowCancelled { reason: String },
-    StepCompleted { id: String, output: serde_json::Value },
-    StepFailed { id: String, error: serde_json::Value },
-    TimerFired { id: String },
-    SignalReceived { id: String, payload: serde_json::Value },
-    SignalTimedOut { id: String },
-    ChildWorkflowCompleted { id: String, output: serde_json::Value },
-    ChildWorkflowFailed { id: String, error: serde_json::Value },
-    TimestampRecorded { value: DateTime<Utc> },
-    RandomRecorded { value: f64 },
+    WorkflowStarted {
+        input: serde_json::Value,
+    },
+    WorkflowCompleted {
+        output: serde_json::Value,
+    },
+    WorkflowFailed {
+        error: serde_json::Value,
+    },
+    WorkflowCancelled {
+        reason: String,
+    },
+    StepCompleted {
+        id: String,
+        output: serde_json::Value,
+    },
+    StepFailed {
+        id: String,
+        error: serde_json::Value,
+    },
+    TimerFired {
+        id: String,
+    },
+    SignalReceived {
+        id: String,
+        payload: serde_json::Value,
+    },
+    SignalTimedOut {
+        id: String,
+    },
+    ChildWorkflowCompleted {
+        id: String,
+        output: serde_json::Value,
+    },
+    ChildWorkflowFailed {
+        id: String,
+        error: serde_json::Value,
+    },
+    TimestampRecorded {
+        value: i64,
+    },
+    RandomRecorded {
+        value: f64,
+    },
 }

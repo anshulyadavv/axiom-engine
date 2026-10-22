@@ -1,19 +1,22 @@
+use crate::{
+    auth::{AuthenticatedUser, RequireAdmin},
+    crypto::{
+        decrypt_aes_gcm, encrypt_aes_gcm, generate_secure_token, hash_password, hash_token,
+        resolve_master_key, verify_password,
+    },
+    error::ApiError,
+    handlers::workflows::ApiData,
+    server::AppState,
+};
 use axum::{
     extract::{Path, State},
-    http::header::{SET_COOKIE, HeaderMap},
+    http::header::{HeaderMap, SET_COOKIE},
     response::{IntoResponse, Response},
     Json,
 };
+use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use chrono::{Duration, Utc};
-use crate::{
-    server::AppState,
-    error::ApiError,
-    auth::{AuthenticatedUser, RequireAdmin},
-    crypto::{hash_password, verify_password, generate_secure_token, hash_token, encrypt_aes_gcm, decrypt_aes_gcm, resolve_master_key},
-    handlers::workflows::ApiData,
-};
 
 #[derive(Deserialize)]
 pub struct BootstrapReq {
@@ -56,10 +59,16 @@ pub async fn bootstrap_admin(
 ) -> Result<Response, ApiError> {
     let email = payload.email.trim().to_lowercase();
     if email.is_empty() || !email.contains('@') {
-        return Err(ApiError::Validation("Valid email address is required".into(), vec![]));
+        return Err(ApiError::Validation(
+            "Valid email address is required".into(),
+            vec![],
+        ));
     }
     if payload.password.len() < 8 {
-        return Err(ApiError::Validation("Password must be at least 8 characters".into(), vec![]));
+        return Err(ApiError::Validation(
+            "Password must be at least 8 characters".into(),
+            vec![],
+        ));
     }
 
     // Check existing users count
@@ -71,32 +80,38 @@ pub async fn bootstrap_admin(
     if user_count > 0 {
         // If users already exist, require valid bootstrap secret
         let configured_secret = std::env::var("AXIOM_BOOTSTRAP_SECRET").unwrap_or_default();
-        if configured_secret.is_empty() || payload.bootstrap_secret.as_deref() != Some(&configured_secret) {
-            return Err(ApiError::Forbidden("Bootstrap disabled: system already initialized and invalid bootstrap secret".into()));
+        if configured_secret.is_empty()
+            || payload.bootstrap_secret.as_deref() != Some(&configured_secret)
+        {
+            return Err(ApiError::Forbidden(
+                "Bootstrap disabled: system already initialized and invalid bootstrap secret"
+                    .into(),
+            ));
         }
     }
 
     // Get or create tenant
     let slug = payload.tenant_slug.unwrap_or_else(|| "default".to_string());
-    let tenant_id: Uuid = match sqlx::query_scalar::<_, Uuid>("SELECT id FROM tenants WHERE slug = $1")
-        .bind(&slug)
-        .fetch_optional(&state.db.pool)
-        .await
-        .map_err(|e| ApiError::Internal(e.into()))?
-    {
-        Some(id) => id,
-        None => {
-            let new_id = Uuid::new_v4();
-            sqlx::query("INSERT INTO tenants (id, name, slug) VALUES ($1, $2, $3)")
-                .bind(new_id)
-                .bind(&slug)
-                .bind(&slug)
-                .execute(&state.db.pool)
-                .await
-                .map_err(|e| ApiError::Internal(e.into()))?;
-            new_id
-        }
-    };
+    let tenant_id: Uuid =
+        match sqlx::query_scalar::<_, Uuid>("SELECT id FROM tenants WHERE slug = $1")
+            .bind(&slug)
+            .fetch_optional(&state.db.pool)
+            .await
+            .map_err(|e| ApiError::Internal(e.into()))?
+        {
+            Some(id) => id,
+            None => {
+                let new_id = Uuid::new_v4();
+                sqlx::query("INSERT INTO tenants (id, name, slug) VALUES ($1, $2, $3)")
+                    .bind(new_id)
+                    .bind(&slug)
+                    .bind(&slug)
+                    .execute(&state.db.pool)
+                    .await
+                    .map_err(|e| ApiError::Internal(e.into()))?;
+                new_id
+            }
+        };
 
     let password_hash = hash_password(&payload.password)
         .map_err(|e| ApiError::Internal(anyhow::anyhow!("Hashing error: {}", e)))?;
@@ -169,13 +184,12 @@ pub async fn login(
     }
 
     // Query user by email
-    let user_row: Option<(Uuid, Uuid, String, String)> = sqlx::query_as(
-        "SELECT id, tenant_id, password_hash, role FROM users WHERE email = $1",
-    )
-    .bind(&email)
-    .fetch_optional(&state.db.pool)
-    .await
-    .map_err(|e| ApiError::Internal(e.into()))?;
+    let user_row: Option<(Uuid, Uuid, String, String)> =
+        sqlx::query_as("SELECT id, tenant_id, password_hash, role FROM users WHERE email = $1")
+            .bind(&email)
+            .fetch_optional(&state.db.pool)
+            .await
+            .map_err(|e| ApiError::Internal(e.into()))?;
 
     let (user_id, tenant_id, password_hash, role_str) = match user_row {
         Some(row) => row,
@@ -229,7 +243,9 @@ pub async fn login(
     let mut response = body.into_response();
     response.headers_mut().insert(
         SET_COOKIE,
-        cookie_val.parse().map_err(|e| ApiError::Internal(anyhow::anyhow!("{:?}", e)))?,
+        cookie_val
+            .parse()
+            .map_err(|e| ApiError::Internal(anyhow::anyhow!("{:?}", e)))?,
     );
     Ok(response)
 }
@@ -258,20 +274,19 @@ pub async fn logout(
     let cookie_val = "axiom_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0";
     let body = Json(serde_json::json!({ "ok": true }));
     let mut response = body.into_response();
-    response.headers_mut().insert(
-        SET_COOKIE,
-        cookie_val.parse().unwrap(),
-    );
+    response
+        .headers_mut()
+        .insert(SET_COOKIE, cookie_val.parse().unwrap());
     Ok(response)
 }
 
-pub async fn get_me(
-    user: AuthenticatedUser,
-) -> Result<Json<ApiData<UserInfo>>, ApiError> {
+pub async fn get_me(user: AuthenticatedUser) -> Result<Json<ApiData<UserInfo>>, ApiError> {
     Ok(Json(ApiData {
         data: UserInfo {
             id: user.user_id.unwrap_or_default(),
-            email: user.email.unwrap_or_else(|| "api-key-caller@axiom.internal".into()),
+            email: user
+                .email
+                .unwrap_or_else(|| "api-key-caller@axiom.internal".into()),
             role: user.role.as_str().into(),
             tenant_id: user.tenant_id.0,
         },

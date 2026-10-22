@@ -1,5 +1,5 @@
+use axiom_core::{FenceToken, RunId};
 use serde::{Deserialize, Serialize};
-use axiom_core::{RunId, FenceToken};
 
 // =========================================================================
 // NATS SUBJECT CONFIGURATION
