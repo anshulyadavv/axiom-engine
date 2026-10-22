@@ -20,7 +20,8 @@ async fn test_worker_crash_recovery_no_reexecution() -> Result<()> {
     // Fail loudly if DATABASE_URL is unset (do not silently return)
     let db_url = std::env::var("DATABASE_URL")
         .expect("DATABASE_URL environment variable must be set to run database tests");
-    let nats_url = std::env::var("NATS_URL").unwrap_or_else(|_| "nats://localhost:4222".to_string());
+    let nats_url =
+        std::env::var("NATS_URL").unwrap_or_else(|_| "nats://localhost:4222".to_string());
 
     let db = Database::connect(&db_url)
         .await
@@ -55,7 +56,9 @@ async fn test_worker_crash_recovery_no_reexecution() -> Result<()> {
 
     // Create execution log file for observing step executions
     let temp_dir = tempfile::tempdir()?;
-    let record_file = temp_dir.path().join(format!("records_{}.log", Uuid::new_v4()));
+    let record_file = temp_dir
+        .path()
+        .join(format!("records_{}.log", Uuid::new_v4()));
 
     // 2. Set up tenant, workflow, and pending run
     let tenant_id = TenantId(Uuid::new_v4());
@@ -120,7 +123,10 @@ async fn test_worker_crash_recovery_no_reexecution() -> Result<()> {
 
     while start_wait.elapsed() < Duration::from_secs(30) {
         let events = db.get_events(run_id).await?;
-        if events.iter().any(|e| e.event_type == "StepCompleted" && e.step_id.as_deref() == Some("step1")) {
+        if events
+            .iter()
+            .any(|e| e.event_type == "StepCompleted" && e.step_id.as_deref() == Some("step1"))
+        {
             step1_done = true;
         }
 
@@ -136,7 +142,10 @@ async fn test_worker_crash_recovery_no_reexecution() -> Result<()> {
     }
 
     assert!(step1_done, "Step 1 did not complete within timeout");
-    assert!(step2_in_flight, "Step 2 did not enter execution within timeout");
+    assert!(
+        step2_in_flight,
+        "Step 2 did not enter execution within timeout"
+    );
 
     // Fetch the run state before kill
     let run_before_kill = db.get_run(run_id).await?.expect("Run must exist");
@@ -153,7 +162,10 @@ async fn test_worker_crash_recovery_no_reexecution() -> Result<()> {
     println!("Worker A hard-killed.");
 
     // 6. Wait for lease to expire
-    println!("Waiting for lease to expire (configured TTL: {} ms)...", lease_ttl_ms);
+    println!(
+        "Waiting for lease to expire (configured TTL: {} ms)...",
+        lease_ttl_ms
+    );
     let mut expired = false;
     let expire_wait = std::time::Instant::now();
     while expire_wait.elapsed() < Duration::from_secs(10) {

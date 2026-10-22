@@ -82,13 +82,15 @@ impl Scheduler {
         let history: Vec<SemanticEvent> = event_rows
             .into_iter()
             .filter_map(|row| {
-                serde_json::from_value::<SemanticEvent>(row.data.clone()).ok().or_else(|| {
-                    let obj = serde_json::json!({
-                        "type": row.event_type,
-                        "data": row.data
-                    });
-                    serde_json::from_value::<SemanticEvent>(obj).ok()
-                })
+                serde_json::from_value::<SemanticEvent>(row.data.clone())
+                    .ok()
+                    .or_else(|| {
+                        let obj = serde_json::json!({
+                            "type": row.event_type,
+                            "data": row.data
+                        });
+                        serde_json::from_value::<SemanticEvent>(obj).ok()
+                    })
             })
             .collect();
 
@@ -415,9 +417,7 @@ impl Scheduler {
             CommandPayload::RecordRandom => {
                 info!(run_id = %run_id.0, "TS yielded RecordRandom");
                 let random_val: f64 = rand::random();
-                let evt = SemanticEvent::RandomRecorded {
-                    value: random_val,
-                };
+                let evt = SemanticEvent::RandomRecorded { value: random_val };
                 let evt_row = EventRow {
                     id: uuid::Uuid::new_v4(),
                     run_id,

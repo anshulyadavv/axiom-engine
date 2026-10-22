@@ -913,10 +913,11 @@ async fn test_fenced_append_event_records_timestamp_and_clears_lease() -> Result
     );
 
     // 3. Verify acquire_lease immediately re-acquires the run for the next scheduling phase
-    let polled = db
-        .acquire_lease(run_id, "worker-2")
-        .await?;
-    assert!(polled.is_some(), "acquire_lease should immediately claim the run");
+    let polled = db.acquire_lease(run_id, "worker-2").await?;
+    assert!(
+        polled.is_some(),
+        "acquire_lease should immediately claim the run"
+    );
     let polled_token = polled.unwrap();
     assert_eq!(
         polled_token.0, 2,
@@ -988,7 +989,8 @@ async fn test_chaos_duplicate_rate_and_enabled_gate() -> Result<()> {
         completed_at: None,
         duration_ms: None,
     };
-    db.upsert_step_execution(run_id, FenceToken(1), step_row).await?;
+    db.upsert_step_execution(run_id, FenceToken(1), step_row)
+        .await?;
 
     let temp_dir = std::env::temp_dir();
     let script_path = temp_dir.join(format!("chaos_step_{}.js", Uuid::new_v4()));
@@ -1030,12 +1032,19 @@ rl.on('line', (line) => {
     std::env::set_var("AXIOM_CHAOS_NATS_DROP_RATE", "1.0");
 
     let processed = process_message_with_chaos_internal(db_arc.clone(), &script_str, &work).await?;
-    assert!(processed, "Message should NOT be dropped when AXIOM_CHAOS_ENABLED is not set");
+    assert!(
+        processed,
+        "Message should NOT be dropped when AXIOM_CHAOS_ENABLED is not set"
+    );
 
     // 2. With AXIOM_CHAOS_ENABLED=1, AXIOM_CHAOS_NATS_DROP_RATE=1.0 DOES drop message
     std::env::set_var("AXIOM_CHAOS_ENABLED", "1");
-    let processed_dropped = process_message_with_chaos_internal(db_arc.clone(), &script_str, &work).await?;
-    assert!(!processed_dropped, "Message should be dropped when AXIOM_CHAOS_ENABLED=1 and DROP_RATE=1.0");
+    let processed_dropped =
+        process_message_with_chaos_internal(db_arc.clone(), &script_str, &work).await?;
+    assert!(
+        !processed_dropped,
+        "Message should be dropped when AXIOM_CHAOS_ENABLED=1 and DROP_RATE=1.0"
+    );
     std::env::remove_var("AXIOM_CHAOS_NATS_DROP_RATE");
 
     // 3. With AXIOM_CHAOS_ENABLED=1 and AXIOM_CHAOS_NATS_DUPLICATE_RATE=1.0:
@@ -1085,7 +1094,9 @@ rl.on('line', (line) => {
         completed_at: None,
         duration_ms: None,
     };
-    db_arc.upsert_step_execution(dup_run_id, FenceToken(1), dup_step).await?;
+    db_arc
+        .upsert_step_execution(dup_run_id, FenceToken(1), dup_step)
+        .await?;
 
     let work_dup = WorkMessage {
         message_id: format!("{}-step-dup-chaos-1", dup_run_id.0),
@@ -1098,7 +1109,8 @@ rl.on('line', (line) => {
         correlation_id: None,
     };
 
-    let processed_dup = process_message_with_chaos_internal(db_arc.clone(), &script_str, &work_dup).await?;
+    let processed_dup =
+        process_message_with_chaos_internal(db_arc.clone(), &script_str, &work_dup).await?;
     assert!(processed_dup, "Duplicate message processing should succeed");
 
     // Clean up environment variables
@@ -1127,6 +1139,3 @@ rl.on('line', (line) => {
 
     Ok(())
 }
-
-
-

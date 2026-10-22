@@ -26,7 +26,9 @@ async fn test_rate_limit_run_creation_exceeds_limit() {
 
     let db_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://axiom:password@localhost:5432/axiom_engine".to_string());
-    let db = Database::connect(&db_url).await.expect("Failed to connect to DB");
+    let db = Database::connect(&db_url)
+        .await
+        .expect("Failed to connect to DB");
 
     let tenant_id = TenantId(Uuid::new_v4());
 
@@ -70,7 +72,9 @@ async fn test_rate_limit_run_creation_exceeds_limit() {
         created_at: chrono::Utc::now(),
         updated_at: chrono::Utc::now(),
     };
-    db.create_workflow(wf).await.expect("Failed to create workflow");
+    db.create_workflow(wf)
+        .await
+        .expect("Failed to create workflow");
 
     let builder = metrics_exporter_prometheus::PrometheusBuilder::new();
     let metrics_handle = builder.build_recorder().handle();
@@ -101,9 +105,12 @@ async fn test_rate_limit_run_creation_exceeds_limit() {
             .uri(format!("/v1/workflows/{}/runs", workflow_id.0))
             .header("Authorization", format!("Bearer {}", raw_key))
             .header("Content-Type", "application/json")
-            .body(Body::from(serde_json::to_vec(&serde_json::json!({
-                "input": { "request_num": i }
-            })).unwrap()))
+            .body(Body::from(
+                serde_json::to_vec(&serde_json::json!({
+                    "input": { "request_num": i }
+                }))
+                .unwrap(),
+            ))
             .unwrap();
 
         let response = app.clone().oneshot(req).await.unwrap();
@@ -115,18 +122,12 @@ async fn test_rate_limit_run_creation_exceeds_limit() {
                 "Request {} exceeding limit must return HTTP 429",
                 i
             );
-            assert_eq!(
-                response.headers().get("X-RateLimit-Limit").unwrap(),
-                "5"
-            );
+            assert_eq!(response.headers().get("X-RateLimit-Limit").unwrap(), "5");
             assert_eq!(
                 response.headers().get("X-RateLimit-Remaining").unwrap(),
                 "0"
             );
-            assert_eq!(
-                response.headers().get("Retry-After").unwrap(),
-                "60"
-            );
+            assert_eq!(response.headers().get("Retry-After").unwrap(), "60");
         }
         statuses.push(status);
     }
@@ -165,7 +166,9 @@ async fn test_rate_limit_can_be_disabled_via_env_for_benchmarks() {
 
     let db_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://axiom:password@localhost:5432/axiom_engine".to_string());
-    let db = Database::connect(&db_url).await.expect("Failed to connect to DB");
+    let db = Database::connect(&db_url)
+        .await
+        .expect("Failed to connect to DB");
 
     let tenant_id = TenantId(Uuid::new_v4());
     sqlx::query("INSERT INTO tenants (id, name, slug) VALUES ($1, $2, $3)")
@@ -205,7 +208,9 @@ async fn test_rate_limit_can_be_disabled_via_env_for_benchmarks() {
         created_at: chrono::Utc::now(),
         updated_at: chrono::Utc::now(),
     };
-    db.create_workflow(wf).await.expect("Failed to create workflow");
+    db.create_workflow(wf)
+        .await
+        .expect("Failed to create workflow");
 
     let builder = metrics_exporter_prometheus::PrometheusBuilder::new();
     let metrics_handle = builder.build_recorder().handle();
@@ -232,9 +237,12 @@ async fn test_rate_limit_can_be_disabled_via_env_for_benchmarks() {
             .uri(format!("/v1/workflows/{}/runs", workflow_id.0))
             .header("Authorization", format!("Bearer {}", raw_key))
             .header("Content-Type", "application/json")
-            .body(Body::from(serde_json::to_vec(&serde_json::json!({
-                "input": { "request_num": i }
-            })).unwrap()))
+            .body(Body::from(
+                serde_json::to_vec(&serde_json::json!({
+                    "input": { "request_num": i }
+                }))
+                .unwrap(),
+            ))
             .unwrap();
 
         let response = app.clone().oneshot(req).await.unwrap();

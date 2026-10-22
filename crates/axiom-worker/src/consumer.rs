@@ -243,13 +243,15 @@ pub async fn process_work_internal(
     let history: Vec<SemanticEvent> = event_rows
         .into_iter()
         .filter_map(|row| {
-            serde_json::from_value::<SemanticEvent>(row.data.clone()).ok().or_else(|| {
-                let obj = serde_json::json!({
-                    "type": row.event_type,
-                    "data": row.data
-                });
-                serde_json::from_value::<SemanticEvent>(obj).ok()
-            })
+            serde_json::from_value::<SemanticEvent>(row.data.clone())
+                .ok()
+                .or_else(|| {
+                    let obj = serde_json::json!({
+                        "type": row.event_type,
+                        "data": row.data
+                    });
+                    serde_json::from_value::<SemanticEvent>(obj).ok()
+                })
         })
         .collect();
 

@@ -309,7 +309,9 @@ async fn test_now_ipc_reproduction() -> Result<()> {
         run_correlation_id: None,
     };
 
-    let cmd_result = sidecar.send_resume_workflow(payload, db.clone(), tenant_id).await;
+    let cmd_result = sidecar
+        .send_resume_workflow(payload, db.clone(), tenant_id)
+        .await;
     sidecar.kill().await;
 
     let cmd = cmd_result?;
@@ -328,9 +330,7 @@ async fn test_now_ipc_reproduction() -> Result<()> {
         workflow_name: "now-test-flow".into(),
         workflow_version: 1,
         input: serde_json::json!({}),
-        history: vec![axiom_core::SemanticEvent::TimestampRecorded {
-            value: recorded_ts,
-        }],
+        history: vec![axiom_core::SemanticEvent::TimestampRecorded { value: recorded_ts }],
         run_correlation_id: None,
     };
     let cmd2 = sidecar2
@@ -423,7 +423,9 @@ async fn test_random_ipc_exchange() -> Result<()> {
         run_correlation_id: None,
     };
 
-    let cmd_result = sidecar.send_resume_workflow(payload, db.clone(), tenant_id).await;
+    let cmd_result = sidecar
+        .send_resume_workflow(payload, db.clone(), tenant_id)
+        .await;
     sidecar.kill().await;
 
     let cmd = cmd_result?;
@@ -465,5 +467,3 @@ async fn test_random_ipc_exchange() -> Result<()> {
 
     Ok(())
 }
-
-

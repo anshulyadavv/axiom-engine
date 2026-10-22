@@ -40,10 +40,12 @@ pub async fn register_workflow(
 
     if !is_disabled && limit_per_min > 0 {
         let refill_per_sec = limit_per_min / 60;
-        if !state
-            .rate_limiter
-            .check_and_consume_keyed(tenant_id.0, "workflows", limit_per_min, refill_per_sec)
-        {
+        if !state.rate_limiter.check_and_consume_keyed(
+            tenant_id.0,
+            "workflows",
+            limit_per_min,
+            refill_per_sec,
+        ) {
             return Err(ApiError::RateLimited);
         }
     }
@@ -246,10 +248,12 @@ pub async fn start_run(
 
     if !is_disabled && limit_per_min > 0 {
         let refill_per_sec = limit_per_min / 60;
-        if !state
-            .rate_limiter
-            .check_and_consume_keyed(tenant_id.0, "runs", limit_per_min, refill_per_sec)
-        {
+        if !state.rate_limiter.check_and_consume_keyed(
+            tenant_id.0,
+            "runs",
+            limit_per_min,
+            refill_per_sec,
+        ) {
             return Err(ApiError::RateLimited);
         }
     }

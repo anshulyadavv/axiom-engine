@@ -114,7 +114,9 @@ impl IntoResponse for ApiError {
             let limit_str = std::env::var("AXIOM_RATE_LIMIT_RUNS_PER_MIN")
                 .unwrap_or_else(|_| "1000".to_string());
             if let Ok(limit_val) = HeaderValue::from_str(&limit_str) {
-                response.headers_mut().insert("X-RateLimit-Limit", limit_val);
+                response
+                    .headers_mut()
+                    .insert("X-RateLimit-Limit", limit_val);
             }
             response
                 .headers_mut()
