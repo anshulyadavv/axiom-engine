@@ -181,7 +181,7 @@ export const Docs: React.FC = () => {
             <Card title="1. Overview">
               <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', lineHeight: 1.7, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <p>
-                  <strong>Axiom Engine</strong> is a self-hostable, production-grade durable execution runtime for Workflows-as-Code. It allows developers to define long-running, multi-step asynchronous processes in standard TypeScript, guaranteeing that state transitions survive process restarts, node crashes, and transient network outages.
+                  <strong>Axiom Engine</strong> is a self-hostable durable execution runtime for Workflows-as-Code. It allows developers to define long-running, multi-step asynchronous processes in standard TypeScript, guaranteeing that state transitions survive process restarts, node crashes, and transient network outages.
                 </p>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
                   <div style={{ padding: '0.875rem', backgroundColor: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }}>
@@ -334,7 +334,7 @@ export const Docs: React.FC = () => {
                     <strong>Multi-Step Order:</strong> 3 sequential steps (validate, charge, ship). Verifies lease fencing, sequential step progression, and outbox emission.
                   </div>
                   <div style={{ padding: '0.75rem', backgroundColor: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-md)' }}>
-                    <strong>Bounded Retry:</strong> Simulates transient 503 errors and succeeds on attempt 3. Verifies attempt counter persistence and backoff invariants.
+                    <strong>Bounded Retry (Simulation):</strong> Demonstrates application-level try/catch retry in workflow code recovering on attempt 2. Engine-level step retries and exponential backoff policies are Planned (Phase 2).
                   </div>
                   <div style={{ padding: '0.75rem', backgroundColor: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-md)' }}>
                     <strong>Controlled Failure:</strong> Simulates an unrecoverable business failure. Verifies error serialization, failure tagging, and terminal state transitions.

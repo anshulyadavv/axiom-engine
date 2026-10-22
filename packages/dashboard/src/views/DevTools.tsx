@@ -249,8 +249,8 @@ export const DevTools = () => {
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.625rem 0.75rem', backgroundColor: 'var(--bg-surface-elevated)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }}>
               <div>
-                <div style={{ fontWeight: 600, fontSize: 'var(--font-size-sm)' }}>Bounded Exponential Retry</div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Fails initially, succeeds on attempt 3. Verifies retry invariants and attempt counts.</div>
+                <div style={{ fontWeight: 600, fontSize: 'var(--font-size-sm)' }}>Bounded Retry (App Simulation)</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Simulates application-level retry loop in user code. Engine retries/backoff are Planned (Phase 2).</div>
               </div>
               <button 
                 className="btn btn-sm btn-secondary"
